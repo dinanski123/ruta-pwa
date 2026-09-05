@@ -1,4 +1,4 @@
-# Public maintenance templates release build
+# Hardened cloud sync release build
 name: Build Android APK
 
 on:
