@@ -30,6 +30,6 @@ jobs:
           git config user.name "ferdz.degracia"
           git config user.email "ferdz.degracia@gmail.com"
           git add cloud-sync.js index.html service-worker.js
-          git rm scripts/wire-oem-provider.py .github/workflows/ruta-oem-provider-wireup.yml
+          git rm -f scripts/wire-oem-provider.py .github/workflows/ruta-oem-provider-wireup.yml
           git commit -m "Add verified OEM maintenance provider integration"
           git push
