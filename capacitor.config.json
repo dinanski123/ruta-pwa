@@ -1,0 +1,8 @@
+{
+  "appId": "com.ferdz.ruta",
+  "appName": "RUTA",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
