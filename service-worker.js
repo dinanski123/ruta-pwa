@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v3-cloud-sync';
+const CACHE_NAME = 'ruta-cache-v4-fleet';
 const APP_SHELL = [
   './',
   './index.html',
