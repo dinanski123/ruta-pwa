@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>RUTA — Fuel & Maintenance Tracker</title>
-<meta name="description" content="Sundan ang bawat kilometro — fuel log, trip tracker, maintenance schedule, at fuel watch.">
+<meta name="description" content="Sundan ang bawat kilometro — fuel log, maintenance schedule, at fuel watch.">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#101312">
 
@@ -416,7 +416,6 @@ nav#tabbar{
 const ICONS = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
   fuel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15"/><path d="M4 11h10"/><path d="M14 8l3 3v6a1.5 1.5 0 0 0 3 0v-5l-3-3"/><path d="M2 21h14"/></svg>`,
-  route: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4h-.5"/></svg>`,
   wrench: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 1 0-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2-2z"/></svg>`,
   pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
 };
@@ -424,7 +423,7 @@ const ICONS = {
 /* ---------- TRANSLATIONS ---------- */
 const TR = {
   en: {
-    tab_home:'Dashboard', tab_fuel:'Fuel', tab_trips:'Trips', tab_pms:'Maintenance', tab_nearby:'Nearby',
+    tab_home:'Dashboard', tab_fuel:'Fuel', tab_pms:'Maintenance', tab_nearby:'Nearby',
     odo_label:'current odometer',
     avg_kml:'avg km/L',
     month_spend:'spent this month',
@@ -433,8 +432,6 @@ const TR = {
     fuel_log:'Fuel log',
     add:'+ Add',
     no_fuel:'No fuel entries yet. Log your first fill-up.',
-    trip_log:'Trip log',
-    no_trips:'No trips logged yet. Track your drives here.',
     maint_schedule:'Maintenance schedule',
     add_item:'+ Item',
     done:'Done',
@@ -463,13 +460,6 @@ const TR = {
     price_per_liter:'Price/Liter',
     cancel:'Cancel',
     save:'Save',
-    add_trip_title:'Add trip',
-    start_odo:'Start odometer',
-    end_odo:'End odometer',
-    purpose:'Purpose',
-    purpose_work:'Work', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Other',
-    note_optional:'Note (optional)',
-    note_placeholder:'e.g. airport pick-up',
     add_maint_title:'Add maintenance item',
     item_name:'Name',
     item_name_placeholder:'e.g. Brake fluid change',
@@ -485,7 +475,7 @@ const TR = {
     dark:'Dark', light:'Light', close:'Close',
   },
   fil: {
-    tab_home:'Dashboard', tab_fuel:'Gasolina', tab_trips:'Byahe', tab_pms:'PMS', tab_nearby:'Malapit',
+    tab_home:'Dashboard', tab_fuel:'Gasolina', tab_pms:'PMS', tab_nearby:'Malapit',
     odo_label:'kasalukuyang odometer',
     avg_kml:'avg km/L',
     month_spend:'gastos ngayong buwan',
@@ -494,8 +484,6 @@ const TR = {
     fuel_log:'Fuel log',
     add:'+ Magdagdag',
     no_fuel:'Wala pang naka-log na pag-gas. Idagdag ang unang fill-up mo.',
-    trip_log:'Trip log',
-    no_trips:'Wala pang naka-log na byahe. I-track ang mga trip mo dito.',
     maint_schedule:'Maintenance schedule',
     add_item:'+ Item',
     done:'Tapos na',
@@ -524,13 +512,6 @@ const TR = {
     price_per_liter:'Presyo/Liter',
     cancel:'Kanselahin',
     save:'I-save',
-    add_trip_title:'Magdagdag ng trip',
-    start_odo:'Simulang odometer',
-    end_odo:'Tapos na odometer',
-    purpose:'Layunin',
-    purpose_work:'Trabaho', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Iba pa',
-    note_optional:'Note (opsyonal)',
-    note_placeholder:'hal. pick-up sa airport',
     add_maint_title:'Magdagdag ng maintenance item',
     item_name:'Pangalan',
     item_name_placeholder:'hal. Palitan ng brake fluid',
@@ -556,7 +537,6 @@ function t(key, ...args){
 const TABS = [
   {id:'home', key:'tab_home', icon:'home'},
   {id:'fuel', key:'tab_fuel', icon:'fuel'},
-  {id:'trips', key:'tab_trips', icon:'route'},
   {id:'pms', key:'tab_pms', icon:'wrench'},
   {id:'nearby', key:'tab_nearby', icon:'pin'},
 ];
@@ -570,7 +550,6 @@ function defaultData(lang){
   return {
     settings:{ odometer: 0, currency: '₱', language: lang || 'fil', theme: 'dark' },
     fuel: [],
-    trips: [],
     maintenance: [
       {id:'m1', name:names[0], intervalKm:5000, lastOdo:0},
       {id:'m2', name:names[1], intervalKm:10000, lastOdo:0},
@@ -622,15 +601,6 @@ function fmtKm(n){ return Number(n||0).toLocaleString('en-PH') + ' km'; }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 
-function localizedPurpose(value){
-  const keys = {
-    Work:'purpose_work', Trabaho:'purpose_work',
-    Personal:'purpose_personal',
-    Errand:'purpose_errand',
-    Other:'purpose_other', 'Iba pa':'purpose_other'
-  };
-  return keys[value] ? t(keys[value]) : value;
-}
 function localizedMaintenanceName(item){
   const defaultIndex = {m1:0, m2:1, m3:2, m4:3}[item.id];
   if(defaultIndex === undefined) return item.name;
@@ -817,29 +787,6 @@ function renderFuel(){
   `;
 }
 
-/* ---------- RENDER: TRIPS ---------- */
-function renderTrips(){
-  const sorted = [...state.trips].sort((a,b)=> new Date(b.date)-new Date(a.date));
-  const cards = sorted.map(tr=>`
-    <div class="list-card">
-      <div class="top-row">
-        <div class="title">${localizedPurpose(tr.purpose)}</div>
-        <div class="amount" style="color:var(--teal)">${fmtKm(tr.distance)}</div>
-      </div>
-      <div class="meta">
-        <span>${tr.date}</span>
-        <span>${fmtKm(tr.startOdo)} → ${fmtKm(tr.endOdo)}</span>
-      </div>
-      ${tr.note ? `<div class="meta" style="margin-top:6px">${tr.note}</div>` : ''}
-    </div>
-  `).join('');
-
-  return `
-    <div class="section-title">${t('trip_log')} <button class="btn-add" onclick="openTripForm()">${t('add')}</button></div>
-    ${cards || `<div class="empty-state"><div class="big">🛣️</div><div class="msg">${t('no_trips')}</div></div>`}
-  `;
-}
-
 /* ---------- RENDER: PMS ---------- */
 function pmsItemHtml(m){
   const {remaining,status} = m.remaining!==undefined ? m : {...m, ...maintenanceStatus(m)};
@@ -965,47 +912,6 @@ async function saveFuelForm(){
   render();
 }
 
-function openTripForm(){
-  openOverlay(`
-    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
-      <div class="form-sheet">
-        <h3>${t('add_trip_title')}</h3>
-        <div class="field"><label>${t('date')}</label><input id="t_date" type="date" value="${todayStr()}"></div>
-        <div class="field-row">
-          <div class="field"><label>${t('start_odo')}</label><input id="t_start" type="number" value="${currentOdo()||''}"></div>
-          <div class="field"><label>${t('end_odo')}</label><input id="t_end" type="number"></div>
-        </div>
-        <div class="field"><label>${t('purpose')}</label>
-          <select id="t_purpose">
-            <option>${t('purpose_work')}</option>
-            <option>${t('purpose_personal')}</option>
-            <option>${t('purpose_errand')}</option>
-            <option>${t('purpose_other')}</option>
-          </select>
-        </div>
-        <div class="field"><label>${t('note_optional')}</label><input id="t_note" type="text" placeholder="${t('note_placeholder')}"></div>
-        <div class="form-actions">
-          <button class="btn btn-secondary" onclick="closeOverlay()">${t('cancel')}</button>
-          <button class="btn btn-primary" onclick="saveTripForm()">${t('save')}</button>
-        </div>
-      </div>
-    </div>
-  `);
-}
-async function saveTripForm(){
-  const date = document.getElementById('t_date').value || todayStr();
-  const start = Number(document.getElementById('t_start').value)||0;
-  const end = Number(document.getElementById('t_end').value)||0;
-  const purpose = document.getElementById('t_purpose').value;
-  const note = document.getElementById('t_note').value;
-  const distance = Math.max(0, end-start);
-  state.trips.push({ id:uid(), date, startOdo:start, endOdo:end, distance, purpose, note });
-  if(end > currentOdo()) state.settings.odometer = end;
-  await saveData();
-  closeOverlay();
-  render();
-}
-
 function openMaintForm(){
   openOverlay(`
     <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
@@ -1075,7 +981,6 @@ function render(){
   const main = document.getElementById('main');
   if(activeTab==='home') main.innerHTML = renderHome();
   else if(activeTab==='fuel') main.innerHTML = renderFuel();
-  else if(activeTab==='trips') main.innerHTML = renderTrips();
   else if(activeTab==='pms') main.innerHTML = renderPms();
   else if(activeTab==='nearby') main.innerHTML = renderNearby();
 
@@ -1096,7 +1001,7 @@ function render(){
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('service-worker.js?v=2-odometer-edit').catch(e=>console.log('SW registration failed', e));
+    navigator.serviceWorker.register('service-worker.js?v=4-fleet').catch(e=>console.log('SW registration failed', e));
   });
 }
 </script>
