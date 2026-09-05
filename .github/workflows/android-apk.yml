@@ -39,9 +39,6 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Restore Android debug signing key
         uses: actions/cache@v4
         with:
@@ -64,32 +61,40 @@ jobs:
               -validity 10000
           fi
 
-      - name: Install Capacitor dependencies
+      - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Prepare web assets
-        run: npm run cap:prepare
+      - name: Prepare current RUTA web app
+        run: npm run build:web
 
-      - name: Create Android project
+      - name: Add Android platform
         run: npx cap add android
 
-      - name: Sync Capacitor Android
+      - name: Sync Android platform
         run: npx cap sync android
 
+      - name: Configure Android wrapper
+        env:
+          RUTA_VERSION_CODE: ${{ github.run_number }}
+          RUTA_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: node scripts/configure-android.mjs
+
+      - name: Generate RUTA Android icons and splash assets
+        run: npm run android:assets
+
       - name: Build debug APK
-        shell: bash
+        working-directory: android
         run: |
-          chmod +x android/gradlew
-          cd android
+          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk RUTA-debug.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk RUTA-android-debug.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RUTA-Android-APK
-          path: RUTA-debug.apk
+          name: RUTA-android-debug-apk
+          path: RUTA-android-debug.apk
           if-no-files-found: error
           retention-days: 30
