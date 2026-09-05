@@ -1,0 +1,39 @@
+name: Restore original and apply safe area only
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.event.head_commit.message == 'Run safe-area-only restore'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore original package and patch safe area
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .safe-area-parts/part1.txt .safe-area-parts/part2.txt .safe-area-parts/part3.txt .safe-area-parts/part4.txt .safe-area-parts/part5.txt > /tmp/ruta.b64
+          base64 -d /tmp/ruta.b64 > /tmp/ruta.zip
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.github' -exec rm -rf {} +
+          unzip -q /tmp/ruta.zip -d .
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          s = s.replace("  min-height:100vh;\n  transition: background 0.2s ease, color 0.2s ease;", "  min-height:100vh;\n  min-height:100dvh;\n  transition: background 0.2s ease, color 0.2s ease;")
+          s = s.replace("  min-height:100vh;\n  background:var(--bg);", "  min-height:100vh;\n  min-height:100dvh;\n  background:var(--bg);")
+          s = s.replace("header{\n  padding:18px 20px 14px;", "header{\n  padding:calc(18px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 14px calc(20px + env(safe-area-inset-left));")
+          s = s.replace("main{\n  flex:1;\n  padding:20px 20px 100px;", "main{\n  flex:1;\n  padding:20px calc(20px + env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));")
+          s = s.replace("  padding:8px 6px calc(8px + env(safe-area-inset-bottom));", "  padding:8px calc(6px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));")
+          s = s.replace("  padding:20px 20px calc(20px + env(safe-area-inset-bottom));\n  max-height:85vh;", "  padding:20px calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));\n  max-height:85vh;\n  max-height:85dvh;")
+          p.write_text(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply safe area only"
+          git push origin HEAD:main
