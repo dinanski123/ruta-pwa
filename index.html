@@ -480,6 +480,7 @@ const TR = {
     geo_none:"Location not available on this device",
     default_maint:['Oil change','Tire rotation','Air filter replacement','Brake check'],
     settings:'Settings', language:'Language', currency:'Currency', theme:'Appearance',
+    starting_odo:'Current / starting odometer (km)', save_odo:'Save odometer', edit:'Edit', edit_maint_title:'Edit maintenance item',
     dark:'Dark', light:'Light', close:'Close',
   },
   fil: {
@@ -539,6 +540,7 @@ const TR = {
     geo_none:'Hindi available ang location sa device na ito',
     default_maint:['Palitan ng oli','I-rotate ang gulong','Palitan ng air filter','I-check ang preno'],
     settings:'Settings', language:'Wika', currency:'Currency', theme:'Itsura',
+    starting_odo:'Kasalukuyan / panimulang odometer (km)', save_odo:'I-save ang odometer', edit:'I-edit', edit_maint_title:'I-edit ang maintenance item',
     dark:'Dark', light:'Light', close:'Isara',
   }
 };
@@ -603,6 +605,15 @@ function applyTheme(){
 function setLanguage(lang){ state.settings.language = lang; saveData(); render(); openSettings(); }
 function setCurrency(c){ state.settings.currency = c; saveData(); render(); openSettings(); }
 function setTheme(th){ state.settings.theme = th; applyTheme(); saveData(); render(); openSettings(); }
+async function saveStartingOdo(){
+  const input = document.getElementById('s_odo');
+  const odo = Number(input?.value);
+  if(!Number.isFinite(odo) || odo < 0) return;
+  state.settings.odometer = odo;
+  await saveData();
+  render();
+  openSettings();
+}
 
 function fmtMoney(n){ return state.settings.currency + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtKm(n){ return Number(n||0).toLocaleString('en-PH') + ' km'; }
@@ -688,6 +699,11 @@ function openSettings(){
     <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
       <div class="form-sheet">
         <h3>${t('settings')}</h3>
+        <div class="field">
+          <label>${t('starting_odo')}</label>
+          <input id="s_odo" type="number" min="0" step="1" value="${currentOdo()}">
+        </div>
+        <button class="geo-btn" onclick="saveStartingOdo()">${t('save_odo')}</button>
         <div class="field">
           <label>${t('language')}</label>
           <div class="toggle-group">
@@ -815,6 +831,7 @@ function pmsItemHtml(m){
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="pms-status ${status}">${statusLabel}</div>
+        <button class="done-btn" onclick="openEditMaintForm('${m.id}')">${t('edit')}</button>
         <button class="done-btn" onclick="markDone('${m.id}')">${t('done')}</button>
       </div>
     </div>
@@ -993,6 +1010,38 @@ async function saveMaintForm(){
   closeOverlay();
   render();
 }
+function openEditMaintForm(id){
+  const item = state.maintenance.find(m=>m.id===id);
+  if(!item) return;
+  openOverlay(`
+    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
+      <div class="form-sheet">
+        <h3>${t('edit_maint_title')}</h3>
+        <div class="field"><label>${t('item_name')}</label><input id="em_name" type="text" value="${item.name}"></div>
+        <div class="field"><label>${t('interval_km')}</label><input id="em_interval" type="number" min="1" step="1" value="${item.intervalKm}"></div>
+        <div class="field"><label>${t('last_done_odo')}</label><input id="em_last" type="number" min="0" step="1" value="${item.lastOdo}"></div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeOverlay()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveEditMaintForm('${item.id}')">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+async function saveEditMaintForm(id){
+  const item = state.maintenance.find(m=>m.id===id);
+  if(!item) return;
+  const name = document.getElementById('em_name').value.trim() || item.name;
+  const interval = Number(document.getElementById('em_interval').value);
+  const last = Number(document.getElementById('em_last').value);
+  if(!Number.isFinite(interval) || interval <= 0 || !Number.isFinite(last) || last < 0) return;
+  item.name = name;
+  item.intervalKm = interval;
+  item.lastOdo = last;
+  await saveData();
+  closeOverlay();
+  render();
+}
 async function markDone(id){
   const item = state.maintenance.find(m=>m.id===id);
   if(item){ item.lastOdo = currentOdo(); await saveData(); render(); }
@@ -1025,7 +1074,7 @@ function render(){
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('service-worker.js').catch(e=>console.log('SW registration failed', e));
+    navigator.serviceWorker.register('service-worker.js?v=2-odometer-edit').catch(e=>console.log('SW registration failed', e));
   });
 }
 </script>
