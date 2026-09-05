@@ -31,11 +31,8 @@
       add_plan:'Add suggested maintenance plan', plan_title:'Suggested maintenance plan', plan:'Maintenance plan',
       apply_plan:'Add this plan', plan_added:'Maintenance plan added',
       general_plan:'RUTA general baseline — verify against your owner’s manual.',
-      exact_plan:'Manufacturer schedule available', no_exact:'No verified manufacturer-specific matrix is stored for this exact vehicle yet, so RUTA is showing a general baseline.',
-      market:'Market', philippines:'Philippines', united_states:'United States', canada:'Canada', other_market:'Other', vin_optional:'VIN (optional)',
-      provider_unconfigured:'Live OEM lookup is ready but needs CarScan credentials in Supabase.', provider_signin:'Sign in to Cloud sync to use live OEM lookup.', provider_unsupported:'Live OEM lookup currently covers cars; motorcycles keep the verified-template/general fallback.',
-      oem_reference:'US-market OEM reference — verify against your local owner’s manual.', recurring_only:'Only recurring OEM items can be added to the Maintenance tracker; one-off/irregular items remain visible in this matrix.',
-      due_at:'due at', manufacturer_badge:'Manufacturer plan', oem_reference_badge:'OEM reference', baseline_badge:'RUTA baseline',
+      exact_plan:'Verified public-source maintenance schedule available', no_exact:'No verified public-source maintenance template is stored for this exact vehicle yet, so RUTA is showing a general baseline.',
+      public_plan_badge:'Public-source plan', baseline_badge:'RUTA baseline', view_source:'Open public source',
       source:'Source', no_items:'No new maintenance items to add.', vehicle_removed:'Vehicle removed', fuel_removed:'Fuel entry removed', maint_removed:'Maintenance item removed',
       active:'Active', custom_vehicle:'My vehicle', archived_trips:'Trip Log has been removed from the app; old cloud trip rows are preserved as historical data.'
     },
@@ -53,11 +50,8 @@
       add_plan:'Magdagdag ng suggested maintenance plan', plan_title:'Suggested maintenance plan', plan:'Maintenance plan',
       apply_plan:'Idagdag ang plan', plan_added:'Naidagdag ang maintenance plan',
       general_plan:'RUTA general baseline — i-verify sa owner’s manual mo.',
-      exact_plan:'May manufacturer schedule', no_exact:'Wala pang verified manufacturer-specific matrix para sa eksaktong sasakyang ito, kaya general baseline muna ang ipinapakita ng RUTA.',
-      market:'Market', philippines:'Pilipinas', united_states:'United States', canada:'Canada', other_market:'Iba pa', vin_optional:'VIN (opsyonal)',
-      provider_unconfigured:'Handa na ang live OEM lookup pero kailangan pang i-configure ang CarScan credentials sa Supabase.', provider_signin:'Mag-sign in sa Cloud sync para magamit ang live OEM lookup.', provider_unsupported:'Kotse muna ang sakop ng live OEM lookup; verified-template/general fallback muna ang motorsiklo.',
-      oem_reference:'US-market OEM reference — i-verify sa local owner’s manual mo.', recurring_only:'Recurring OEM items lang ang puwedeng idagdag sa Maintenance tracker; mananatili sa matrix ang one-off/irregular items.',
-      due_at:'due sa', manufacturer_badge:'Manufacturer plan', oem_reference_badge:'OEM reference', baseline_badge:'RUTA baseline',
+      exact_plan:'May verified public-source maintenance schedule', no_exact:'Wala pang verified public-source maintenance template para sa eksaktong sasakyang ito, kaya general baseline muna ang ipinapakita ng RUTA.',
+      public_plan_badge:'Public-source plan', baseline_badge:'RUTA baseline', view_source:'Buksan ang public source',
       source:'Source', no_items:'Walang bagong maintenance item na kailangang idagdag.', vehicle_removed:'Inalis ang sasakyan', fuel_removed:'Inalis ang fuel entry', maint_removed:'Inalis ang maintenance item',
       active:'Aktibo', custom_vehicle:'Sasakyan ko', archived_trips:'Inalis na ang Trip Log sa app; pinapanatili ang lumang cloud trip rows bilang historical data.'
     }
@@ -122,7 +116,7 @@
         version:2,
         activeVehicleId:id,
         vehicles:{
-          [id]:{id,name:'My vehicle',vehicleType:'car',market:'PH',vin:'',year:null,make:'',model:'',trim:'',engine:'',transmission:'',planSource:'',data:normalizeState(state)}
+          [id]:{id,name:'My vehicle',vehicleType:'car',year:null,make:'',model:'',trim:'',engine:'',transmission:'',planSource:'',data:normalizeState(state)}
         }
       };
     }
@@ -151,7 +145,6 @@
       id:v.id,
       name:v.name || 'My vehicle',
       vehicleType:v.vehicle_type || 'car',
-      market:v.market || 'PH', vin:v.vin || '',
       year:v.year ?? null,
       make:v.make || '', model:v.model || '', trim:v.trim || '', engine:v.engine || '', transmission:v.transmission || '',
       planSource:v.plan_source || '',
@@ -162,7 +155,7 @@
   function vehiclePayload(rec=currentRec()){
     const d = rec?.id === vehicleId ? state : normalizeState(rec?.data);
     return {
-      name:rec?.name || 'My vehicle', vehicle_type:rec?.vehicleType || 'car', market:rec?.market || 'PH', vin:rec?.vin || null, year:rec?.year || null,
+      name:rec?.name || 'My vehicle', vehicle_type:rec?.vehicleType || 'car', year:rec?.year || null,
       make:rec?.make || null, model:rec?.model || null, trim:rec?.trim || null, engine:rec?.engine || null,
       transmission:rec?.transmission || null, plan_source:rec?.planSource || null,
       odometer:Number(d.settings.odometer || 0), currency:d.settings.currency || '₱',
@@ -369,7 +362,7 @@
         const b=document.createElement('button'); b.className='done-btn ruta-danger ruta-remove-maint'; b.textContent=c('remove'); b.onclick=()=>window.rutaRemoveMaint(item.id); right.appendChild(b);
         if(item.source && item.source!=='custom'){
           const left=card.firstElementChild; if(left&&!left.querySelector('.ruta-source')){
-            const badge=document.createElement('div'); badge.className='ruta-source'; badge.textContent=item.source==='manufacturer'?c('manufacturer_badge'):item.source==='oem_reference'?c('oem_reference_badge'):c('baseline_badge'); left.appendChild(badge);
+            const badge=document.createElement('div'); badge.className='ruta-source'; badge.textContent=['public_template','manufacturer','oem_reference'].includes(item.source)?c('public_plan_badge'):c('baseline_badge'); left.appendChild(badge);
           }
         }
       });
@@ -445,20 +438,19 @@
   };
 
   window.rutaOpenAddVehicle=()=>{
-    openOverlay(`<div class="form-overlay" onclick="if(event.target===this) closeOverlay()"><div class="form-sheet"><h3>${c('add_vehicle_title')}</h3><div class="field"><label>${c('vehicle_type')}</label><select id="rv_type" onchange="rutaVehicleTypeChanged()"><option value="car">${c('car')}</option><option value="motorcycle">${c('motorcycle')}</option></select></div><div class="field"><label>${c('market')}</label><select id="rv_market"><option value="PH">${c('philippines')}</option><option value="US">${c('united_states')}</option><option value="CA">${c('canada')}</option><option value="OTHER">${c('other_market')}</option></select></div><div class="field-row"><div class="field"><label>${c('year')}</label><input id="rv_year" type="number" min="1996" max="2100" value="${new Date().getFullYear()}" oninput="rutaLoadModels()"></div><div class="field"><label>${c('current_odo')}</label><input id="rv_odo" type="number" min="0" step="1" value="0"></div></div><div class="field"><label>${c('make')}</label><input id="rv_make" type="text" list="rv_makes" autocomplete="off" oninput="rutaLoadModels()"><datalist id="rv_makes"></datalist></div><div class="field"><label>${c('model')}</label><input id="rv_model" type="text" list="rv_models" autocomplete="off"><datalist id="rv_models"></datalist></div><div class="field"><label>${c('vin_optional')}</label><input id="rv_vin" type="text" maxlength="17" autocapitalize="characters" autocomplete="off"></div><div class="field"><label>${c('trim')}</label><input id="rv_trim" type="text"></div><div class="field"><label>${c('vehicle_name')}</label><input id="rv_name" type="text" placeholder="${esc(c('vehicle_name_hint'))}"></div><div class="ruta-plan-note">${c('lookup_note')}</div><label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:14px"><input id="rv_plan" type="checkbox" checked style="width:auto;margin-top:3px"> <span>${c('add_plan')}</span></label><div class="form-actions"><button class="btn btn-secondary" onclick="closeOverlay()">${typeof t==='function'?t('cancel'):'Cancel'}</button><button class="btn btn-primary" onclick="rutaSaveVehicle()">${typeof t==='function'?t('save'):'Save'}</button></div></div></div>`);
+    openOverlay(`<div class="form-overlay" onclick="if(event.target===this) closeOverlay()"><div class="form-sheet"><h3>${c('add_vehicle_title')}</h3><div class="field"><label>${c('vehicle_type')}</label><select id="rv_type" onchange="rutaVehicleTypeChanged()"><option value="car">${c('car')}</option><option value="motorcycle">${c('motorcycle')}</option></select></div><div class="field-row"><div class="field"><label>${c('year')}</label><input id="rv_year" type="number" min="1996" max="2100" value="${new Date().getFullYear()}" oninput="rutaLoadModels()"></div><div class="field"><label>${c('current_odo')}</label><input id="rv_odo" type="number" min="0" step="1" value="0"></div></div><div class="field"><label>${c('make')}</label><input id="rv_make" type="text" list="rv_makes" autocomplete="off" oninput="rutaLoadModels()"><datalist id="rv_makes"></datalist></div><div class="field"><label>${c('model')}</label><input id="rv_model" type="text" list="rv_models" autocomplete="off"><datalist id="rv_models"></datalist></div><div class="field"><label>${c('trim')}</label><input id="rv_trim" type="text"></div><div class="field"><label>${c('vehicle_name')}</label><input id="rv_name" type="text" placeholder="${esc(c('vehicle_name_hint'))}"></div><div class="ruta-plan-note">${c('lookup_note')}</div><label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:14px"><input id="rv_plan" type="checkbox" checked style="width:auto;margin-top:3px"> <span>${c('add_plan')}</span></label><div class="form-actions"><button class="btn btn-secondary" onclick="closeOverlay()">${typeof t==='function'?t('cancel'):'Cancel'}</button><button class="btn btn-primary" onclick="rutaSaveVehicle()">${typeof t==='function'?t('save'):'Save'}</button></div></div></div>`);
     setTimeout(loadMakes,0);
   };
 
   window.rutaSaveVehicle=async()=>{
     const type=document.getElementById('rv_type')?.value==='motorcycle'?'motorcycle':'car';
     const year=Number(document.getElementById('rv_year')?.value)||null;
-    const market=(document.getElementById('rv_market')?.value||'PH'); const vin=(document.getElementById('rv_vin')?.value||'').trim().toUpperCase();
     const make=(document.getElementById('rv_make')?.value||'').trim(); const model=(document.getElementById('rv_model')?.value||'').trim(); const trim=(document.getElementById('rv_trim')?.value||'').trim();
     const odo=Math.max(0,Number(document.getElementById('rv_odo')?.value)||0); let name=(document.getElementById('rv_name')?.value||'').trim();
     const addPlan=document.getElementById('rv_plan')?.checked!==false;
     if(!name) name=[year,make,model].filter(Boolean).join(' ')||c('custom_vehicle');
     const id=uuid(); const data=blankVehicleState(); data.settings.odometer=odo;
-    const rec={id,name,vehicleType:type,market,vin,year,make,model,trim,engine:'',transmission:'',planSource:'',data};
+    const rec={id,name,vehicleType:type,year,make,model,trim,engine:'',transmission:'',planSource:'',data};
     fleet.vehicles[id]=rec; persistFleet();
     if(client&&user){ try{await insertVehicle(rec);}catch(e){status=e.message||String(e);} }
     await window.rutaSelectVehicle(id);
@@ -484,23 +476,6 @@
     }catch(e){return null;}
   }
 
-  async function providerPlan(rec){
-    if(!rec?.year||!rec?.make||!rec?.model)return null;
-    if(rec.vehicleType==='motorcycle')return {status:'unsupported'};
-    if(!client||!user)return {status:'signin'};
-    try{
-      const {data,error}=await client.functions.invoke('ruta-oem-maintenance',{body:{vehicleType:rec.vehicleType||'car',market:rec.market||'PH',vin:rec.vin||'',year:rec.year,make:rec.make,model:rec.model}});
-      if(error)return {status:'error'};
-      if(data?.status==='ok'&&Array.isArray(data.items)&&data.items.length){
-        const matrix=data.items.map(x=>({key:x.key||'',name:x.name||'Maintenance item',dueKm:Number(x.dueKm||0),intervalKm:Number(x.intervalKm||0),isCycle:Boolean(x.isCycle)}));
-        const recurring=new Map();
-        for(const x of matrix){if(x.isCycle&&x.intervalKm>0&&!recurring.has(x.key||x.name))recurring.set(x.key||x.name,{key:x.key||x.name,name:x.name,intervalKm:x.intervalKm});}
-        return {status:'ok',plan:{kind:data.marketExact?'manufacturer':'oem_reference',label:data.sourceLabel||'OEM maintenance data',sourceUrl:data.sourceUrl||'',items:[...recurring.values()],matrix}};
-      }
-      return {status:data?.status||'no_data'};
-    }catch(e){return {status:'error'};}
-  }
-
   function generalPlan(rec){
     const car=[
       {key:'engine_oil_filter',intervalKm:10000}, {key:'tire_rotation',intervalKm:10000}, {key:'brake_inspection',intervalKm:10000}, {key:'engine_air_filter',intervalKm:20000}
@@ -516,15 +491,9 @@
     const exact=await exactTemplate(rec);
     if(exact){
       const items=(Array.isArray(exact.items)?exact.items:[]).map(x=>({key:x.key||x.template_key||'',name:x.name||x.label||'Maintenance item',intervalKm:Number(x.intervalKm||x.interval_km||5000)}));
-      return {kind:'manufacturer',label:exact.source_label||c('exact_plan'),sourceUrl:exact.source_url||'',items,matrix:items};
+      return {kind:'public_template',label:exact.source_label||c('exact_plan'),sourceUrl:exact.source_url||'',items,matrix:items};
     }
-    const provider=await providerPlan(rec);
-    if(provider?.plan)return provider.plan;
-    const fallback=generalPlan(rec);
-    if(provider?.status==='unconfigured')fallback.providerNote=c('provider_unconfigured');
-    else if(provider?.status==='signin')fallback.providerNote=c('provider_signin');
-    else if(provider?.status==='unsupported')fallback.providerNote=c('provider_unsupported');
-    return fallback;
+    return generalPlan(rec);
   }
 
   window.rutaShowMaintenancePlan=async()=>{
@@ -532,9 +501,9 @@
     const existingKeys=new Set(state.maintenance.map(x=>x.templateKey).filter(Boolean));
     const items=(plan.items||[]).filter(x=>!existingKeys.has(x.key));
     const matrix=Array.isArray(plan.matrix)&&plan.matrix.length?plan.matrix:(plan.items||[]);
-    const message=plan.kind==='manufacturer'?c('exact_plan'):plan.kind==='oem_reference'?c('oem_reference'):c('no_exact');
+    const message=plan.kind==='public_template'?c('exact_plan'):c('no_exact');
     const matrixHtml=matrix.map(x=>{const bits=[];if(Number(x.dueKm||0)>0)bits.push(`${c('due_at')} ${Number(x.dueKm).toLocaleString('en-PH')} km`);if(Number(x.intervalKm||0)>0)bits.push(`${typeof t==='function'?t('every'):'Every'} ${Number(x.intervalKm).toLocaleString('en-PH')} km`);return `<div class="ruta-vehicle-card"><div class="title">${esc(x.name)}</div><div class="sub">${bits.join(' • ')}</div></div>`;}).join('');
-    openOverlay(`<div class="form-overlay" onclick="if(event.target===this) closeOverlay()"><div class="form-sheet"><h3>${c('plan_title')}</h3><div class="ruta-plan-note">${esc(message)}</div>${plan.providerNote?`<div class="ruta-plan-note">${esc(plan.providerNote)}</div>`:''}<div class="ruta-plan-note"><strong>${c('source')}:</strong> ${esc(plan.label)}</div>${plan.kind!=='general'?`<div class="ruta-plan-note">${esc(c('recurring_only'))}</div>`:''}${matrixHtml||`<div class="ruta-plan-note">${c('no_items')}</div>`}<div class="form-actions"><button class="btn btn-secondary" onclick="closeOverlay()">${typeof t==='function'?t('cancel'):'Cancel'}</button><button class="btn btn-primary" ${items.length?'':'disabled'} onclick="rutaApplyMaintenancePlan()">${c('apply_plan')}</button></div></div></div>`);
+    openOverlay(`<div class="form-overlay" onclick="if(event.target===this) closeOverlay()"><div class="form-sheet"><h3>${c('plan_title')}</h3><div class="ruta-plan-note">${esc(message)}</div><div class="ruta-plan-note"><strong>${c('source')}:</strong> ${esc(plan.label)}</div>${plan.sourceUrl?`<div class="ruta-plan-note"><a href="${esc(plan.sourceUrl)}" target="_blank" rel="noopener noreferrer">${c('view_source')}</a></div>`:''}${matrixHtml||`<div class="ruta-plan-note">${c('no_items')}</div>`}<div class="form-actions"><button class="btn btn-secondary" onclick="closeOverlay()">${typeof t==='function'?t('cancel'):'Cancel'}</button><button class="btn btn-primary" ${items.length?'':'disabled'} onclick="rutaApplyMaintenancePlan()">${c('apply_plan')}</button></div></div></div>`);
   };
 
   window.rutaApplyMaintenancePlan=async()=>{
@@ -542,7 +511,7 @@
     const {plan}=pendingPlan; const existingKeys=new Set(state.maintenance.map(x=>x.templateKey).filter(Boolean)); const added=[];
     for(const x of plan.items){
       if(existingKeys.has(x.key))continue;
-      const item={id:itemId(),name:x.name||planNames[lang()][x.key]||'Maintenance item',intervalKm:Number(x.intervalKm||5000),lastOdo:currentOdo(),source:plan.kind==='manufacturer'?'manufacturer':plan.kind==='oem_reference'?'oem_reference':'general',sourceNote:plan.label,templateKey:x.key||''};
+      const item={id:itemId(),name:x.name||planNames[lang()][x.key]||'Maintenance item',intervalKm:Number(x.intervalKm||5000),lastOdo:currentOdo(),source:plan.kind==='public_template'?'public_template':'general',sourceNote:plan.label,templateKey:x.key||''};
       state.maintenance.push(item); added.push(item);
     }
     const rec=currentRec(); if(rec)rec.planSource=plan.label;
