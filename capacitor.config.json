@@ -1,0 +1,8 @@
+{
+  "appId": "app.ruta.tracker",
+  "appName": "RUTA",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#101312"
+  }
+}
