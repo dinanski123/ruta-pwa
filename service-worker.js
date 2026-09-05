@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v8-sync-hardening';
+const CACHE_NAME = 'ruta-cache-v9-password-toggle';
 const APP_SHELL = [
   './',
   './index.html',
