@@ -446,6 +446,7 @@ const TR = {
     location_unavailable:"Location isn't available in this preview (works better once installed as a real PWA on your phone). Sorted by most recent visit.",
     retry:'Retry',
     no_stations:'No tagged stations yet. Log fuel with a station name to see them here.',
+    gas_station:'Gas station', maintenance_item:'Maintenance item',
     last_price:'Last price:',
     last_visit:'Last visit:',
     every:'every', last_done_at:'last done at',
@@ -506,6 +507,7 @@ const TR = {
     location_unavailable:'Location access hindi available sa preview na ito (mas gagana ito kapag naka-install na bilang PWA sa iyong phone). Naka-sort ayon sa pinakabagong bisita.',
     retry:'Ulitin',
     no_stations:'Wala pang naka-tag na estasyon. Mag-log ng gasolina na may station name para makita dito.',
+    gas_station:'Gasolinahan', maintenance_item:'Item sa maintenance',
     last_price:'Huling presyo:',
     last_visit:'Huling bisita:',
     every:'bawat', last_done_at:'huling gawa sa',
@@ -602,7 +604,7 @@ async function saveData(){
 function applyTheme(){
   document.documentElement.setAttribute('data-theme', state.settings.theme || 'dark');
 }
-function setLanguage(lang){ state.settings.language = lang; saveData(); render(); openSettings(); }
+function setLanguage(lang){ state.settings.language = lang; document.documentElement.lang = lang==='en' ? 'en' : 'fil'; saveData(); render(); openSettings(); }
 function setCurrency(c){ state.settings.currency = c; saveData(); render(); openSettings(); }
 function setTheme(th){ state.settings.theme = th; applyTheme(); saveData(); render(); openSettings(); }
 async function saveStartingOdo(){
@@ -619,6 +621,25 @@ function fmtMoney(n){ return state.settings.currency + Number(n||0).toLocaleStri
 function fmtKm(n){ return Number(n||0).toLocaleString('en-PH') + ' km'; }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function localizedPurpose(value){
+  const keys = {
+    Work:'purpose_work', Trabaho:'purpose_work',
+    Personal:'purpose_personal',
+    Errand:'purpose_errand',
+    Other:'purpose_other', 'Iba pa':'purpose_other'
+  };
+  return keys[value] ? t(keys[value]) : value;
+}
+function localizedMaintenanceName(item){
+  const defaultIndex = {m1:0, m2:1, m3:2, m4:3}[item.id];
+  if(defaultIndex === undefined) return item.name;
+  const knownNames = [TR.en.default_maint[defaultIndex], TR.fil.default_maint[defaultIndex]];
+  return knownNames.includes(item.name) ? TR[state.settings.language].default_maint[defaultIndex] : item.name;
+}
+function localizedStationName(value){
+  return value==='Gas station' || value==='Gasolinahan' ? t('gas_station') : value;
+}
 
 function currentOdo(){ return state.settings.odometer || 0; }
 
@@ -777,7 +798,7 @@ function renderFuel(){
     return `
     <div class="list-card">
       <div class="top-row">
-        <div class="title">${entry.station || 'Gas station'}</div>
+        <div class="title">${localizedStationName(entry.station || t('gas_station'))}</div>
         <div class="amount">${fmtMoney(entry.total)}</div>
       </div>
       <div class="meta">
@@ -802,7 +823,7 @@ function renderTrips(){
   const cards = sorted.map(tr=>`
     <div class="list-card">
       <div class="top-row">
-        <div class="title">${tr.purpose}</div>
+        <div class="title">${localizedPurpose(tr.purpose)}</div>
         <div class="amount" style="color:var(--teal)">${fmtKm(tr.distance)}</div>
       </div>
       <div class="meta">
@@ -826,7 +847,7 @@ function pmsItemHtml(m){
   return `
     <div class="pms-item ${status}">
       <div>
-        <div class="name">${m.name}</div>
+        <div class="name">${localizedMaintenanceName(m)}</div>
         <div class="sub">${t('every')} ${fmtKm(m.intervalKm)} • ${t('last_done_at')} ${fmtKm(m.lastOdo)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -931,7 +952,7 @@ function geoTagStation(){
 }
 async function saveFuelForm(){
   const date = document.getElementById('f_date').value || todayStr();
-  const station = document.getElementById('f_station').value || 'Gas station';
+  const station = document.getElementById('f_station').value || t('gas_station');
   const odo = Number(document.getElementById('f_odo').value)||0;
   const liters = Number(document.getElementById('f_liters').value)||0;
   const price = Number(document.getElementById('f_price').value)||0;
@@ -1002,7 +1023,7 @@ function openMaintForm(){
   `);
 }
 async function saveMaintForm(){
-  const name = document.getElementById('m_name').value || 'Maintenance item';
+  const name = document.getElementById('m_name').value || t('maintenance_item');
   const interval = Number(document.getElementById('m_interval').value)||5000;
   const last = Number(document.getElementById('m_last').value)||0;
   state.maintenance.push({id:uid(), name, intervalKm:interval, lastOdo:last});
@@ -1017,7 +1038,7 @@ function openEditMaintForm(id){
     <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
       <div class="form-sheet">
         <h3>${t('edit_maint_title')}</h3>
-        <div class="field"><label>${t('item_name')}</label><input id="em_name" type="text" value="${item.name}"></div>
+        <div class="field"><label>${t('item_name')}</label><input id="em_name" type="text" value="${localizedMaintenanceName(item)}"></div>
         <div class="field"><label>${t('interval_km')}</label><input id="em_interval" type="number" min="1" step="1" value="${item.intervalKm}"></div>
         <div class="field"><label>${t('last_done_odo')}</label><input id="em_last" type="number" min="0" step="1" value="${item.lastOdo}"></div>
         <div class="form-actions">
@@ -1068,6 +1089,7 @@ function render(){
 
 (async function init(){
   state = await loadData();
+  document.documentElement.lang = state.settings.language==='en' ? 'en' : 'fil';
   applyTheme();
   render();
 })();
