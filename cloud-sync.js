@@ -2,6 +2,7 @@
   const SUPABASE_URL = 'https://sfaeomnpyhenszrkgguh.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_fVzhqEUloMaYijWLniImmQ_rtSXnyDr';
   const FLEET_KEY = 'ruta-fleet-v2';
+  const OUTBOX_KEY = 'ruta-sync-outbox-v1';
   const VPIC_BASE = 'https://vpic.nhtsa.dot.gov/api/vehicles';
 
   let client = null;
@@ -15,6 +16,8 @@
   let readyPromise = null;
   let initializedUserId = null;
   let pendingPlan = null;
+  let outbox = [];
+  let flushing = false;
 
   const copy = {
     en: {
@@ -22,6 +25,7 @@
       email:'Email', password:'Password', signin:'Sign in', signup:'Create account', signout:'Sign out', sync:'Sync now',
       connected:'Connected as', synced:'Synced', check:'Check your email to confirm your account, then sign in.',
       invalid:'Enter a valid email and a password with at least 6 characters.',
+      sync_loading:'Connecting to cloud…', pending_sync:'Offline changes saved — waiting to sync.', stale_change:'A newer cloud change was kept; a stale local edit was skipped.',
       vehicles:'Vehicles', add_vehicle:'+ Add vehicle', manage:'Manage', select:'Select', remove:'Remove',
       remove_fuel:'Remove fuel entry?', remove_maint:'Remove maintenance item?', remove_vehicle:'Remove this vehicle from RUTA?',
       last_vehicle:'RUTA needs at least one vehicle.', add_vehicle_title:'Add vehicle', vehicle_type:'Vehicle type', car:'Car', motorcycle:'Motorcycle',
@@ -41,6 +45,7 @@
       email:'Email', password:'Password', signin:'Mag-sign in', signup:'Gumawa ng account', signout:'Mag-sign out', sync:'I-sync ngayon',
       connected:'Nakakonekta bilang', synced:'Naka-sync', check:'I-check ang email mo para kumpirmahin ang account, pagkatapos ay mag-sign in.',
       invalid:'Maglagay ng valid na email at password na may hindi bababa sa 6 na character.',
+      sync_loading:'Kumokonekta sa cloud…', pending_sync:'Naka-save ang offline changes — naghihintay mag-sync.', stale_change:'Mas bagong cloud change ang pinanatili; nilaktawan ang lumang local edit.',
       vehicles:'Mga sasakyan', add_vehicle:'+ Magdagdag ng sasakyan', manage:'Pamahalaan', select:'Piliin', remove:'Alisin',
       remove_fuel:'Alisin ang fuel entry na ito?', remove_maint:'Alisin ang maintenance item na ito?', remove_vehicle:'Alisin ang sasakyang ito sa RUTA?',
       last_vehicle:'Kailangang may kahit isang sasakyan sa RUTA.', add_vehicle_title:'Magdagdag ng sasakyan', vehicle_type:'Uri ng sasakyan', car:'Kotse', motorcycle:'Motorsiklo',
@@ -148,6 +153,8 @@
       year:v.year ?? null,
       make:v.make || '', model:v.model || '', trim:v.trim || '', engine:v.engine || '', transmission:v.transmission || '',
       planSource:v.plan_source || '',
+      updatedAt:v.updated_at || null,
+      archivedAt:v.archived_at || null,
       data:null
     };
   }
@@ -163,11 +170,11 @@
     };
   }
 
-  function fuelPayload(x){
-    return {id:String(x.id),user_id:user.id,vehicle_id:vehicleId,date:x.date,station:x.station||'',odometer:Number(x.odometer||0),liters:Number(x.liters||0),price_per_liter:Number(x.pricePerLiter||0),total:Number(x.total||0),lat:x.lat??null,lng:x.lng??null,deleted_at:null};
+  function fuelPayload(x,vid=vehicleId){
+    return {id:String(x.id),user_id:user.id,vehicle_id:vid,date:x.date,station:x.station||'',odometer:Number(x.odometer||0),liters:Number(x.liters||0),price_per_liter:Number(x.pricePerLiter||0),total:Number(x.total||0),lat:x.lat??null,lng:x.lng??null,deleted_at:null};
   }
-  function maintPayload(x){
-    return {id:String(x.id),user_id:user.id,vehicle_id:vehicleId,name:x.name||'Maintenance item',interval_km:Number(x.intervalKm||5000),last_odo:Number(x.lastOdo||0),source:x.source||'custom',source_note:x.sourceNote||null,template_key:x.templateKey||null,deleted_at:null};
+  function maintPayload(x,vid=vehicleId){
+    return {id:String(x.id),user_id:user.id,vehicle_id:vid,name:x.name||'Maintenance item',interval_km:Number(x.intervalKm||5000),last_odo:Number(x.lastOdo||0),source:x.source||'custom',source_note:x.sourceNote||null,template_key:x.templateKey||null,deleted_at:null};
   }
 
   async function loadSupabase(){
@@ -180,19 +187,106 @@
     return window.supabase;
   }
 
-  async function pushVehicle(){
-    if(!client||!user||!vehicleId||busy)return;
-    const rec=currentRec(); if(!rec)return;
-    const {error}=await client.from('ruta_vehicles').update(vehiclePayload(rec)).eq('id',vehicleId).eq('user_id',user.id);
-    if(error) throw error;
+  function loadOutbox(){
+    try{ const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); outbox=Array.isArray(x)?x:[]; }
+    catch(e){ outbox=[]; }
   }
-  async function pushFuel(x){ if(!client||!user||!vehicleId||busy||!x)return; const {error}=await client.from('ruta_fuel_entries').upsert(fuelPayload(x),{onConflict:'id'}); if(error)throw error; }
-  async function pushMaint(x){ if(!client||!user||!vehicleId||busy||!x)return; const {error}=await client.from('ruta_maintenance_items').upsert(maintPayload(x),{onConflict:'id'}); if(error)throw error; }
+  function persistOutbox(){ try{ localStorage.setItem(OUTBOX_KEY,JSON.stringify(outbox)); }catch(e){} }
+  function opIdentity(op){ return `${op.userId||''}|${op.type}|${op.id}`; }
+  function queueOp(op){
+    if(!user)return;
+    const entry={...clone(op),userId:user.id,queuedAt:nowIso()};
+    const key=opIdentity(entry);
+    outbox=outbox.filter(x=>opIdentity(x)!==key);
+    outbox.push(entry); persistOutbox();
+  }
+  function hasPendingForUser(){ return !!user && outbox.some(x=>x.userId===user.id); }
+  function newerThan(remote,base){
+    if(!remote||!base)return false;
+    const a=Date.parse(remote), b=Date.parse(base);
+    return Number.isFinite(a)&&Number.isFinite(b)&&a>b+5;
+  }
+  function updateLocalVersion(op,row){
+    if(!row)return;
+    if(op.type==='vehicle'){
+      const rec=fleet?.vehicles?.[op.id];
+      if(rec){ rec.updatedAt=row.updated_at||rec.updatedAt||null; rec.archivedAt=row.archived_at||null; }
+      return;
+    }
+    const rec=fleet?.vehicles?.[op.vehicleId]; if(!rec?.data)return;
+    const arr=op.type==='fuel'?rec.data.fuel:rec.data.maintenance;
+    const item=Array.isArray(arr)?arr.find(x=>String(x.id)===String(op.id)):null;
+    if(item)item.updatedAt=row.updated_at||item.updatedAt||null;
+  }
+
+  async function flushOutbox(){
+    if(!client||!user||flushing)return hasPendingForUser();
+    if(typeof navigator!=='undefined' && navigator.onLine===false){ status=c('pending_sync'); return hasPendingForUser(); }
+    flushing=true;
+    const keep=[];
+    let hadConflict=false;
+    try{
+      for(const op of outbox){
+        if(op.userId!==user.id){ keep.push(op); continue; }
+        try{
+          let remote=null, result=null;
+          if(op.type==='vehicle'){
+            const q=await client.from('ruta_vehicles').select('id,updated_at,archived_at').eq('id',op.id).eq('user_id',user.id).maybeSingle();
+            if(q.error)throw q.error; remote=q.data;
+            if(op.action==='archive'){
+              if(remote && !remote.archived_at){
+                const r=await client.from('ruta_vehicles').update({archived_at:op.deletedAt||nowIso()}).eq('id',op.id).eq('user_id',user.id).select().single();
+                if(r.error)throw r.error; result=r.data;
+              }
+            }else{
+              if(remote?.archived_at || (remote && newerThan(remote.updated_at,op.baseUpdatedAt))){ hadConflict=true; status=c('stale_change'); continue; }
+              if(remote){
+                const r=await client.from('ruta_vehicles').update(op.payload).eq('id',op.id).eq('user_id',user.id).select().single();
+                if(r.error)throw r.error; result=r.data;
+              }else{
+                const r=await client.from('ruta_vehicles').insert({id:op.id,user_id:user.id,...op.payload}).select().single();
+                if(r.error)throw r.error; result=r.data;
+              }
+            }
+          }else{
+            const table=op.type==='fuel'?'ruta_fuel_entries':'ruta_maintenance_items';
+            const q=await client.from(table).select('id,updated_at,deleted_at').eq('id',String(op.id)).eq('user_id',user.id).maybeSingle();
+            if(q.error)throw q.error; remote=q.data;
+            if(op.action==='delete'){
+              if(remote && !remote.deleted_at){
+                const r=await client.from(table).update({deleted_at:op.deletedAt||nowIso()}).eq('id',String(op.id)).eq('user_id',user.id).select().single();
+                if(r.error)throw r.error; result=r.data;
+              }
+            }else{
+              if(remote?.deleted_at || (remote && newerThan(remote.updated_at,op.baseUpdatedAt))){ hadConflict=true; status=c('stale_change'); continue; }
+              const r=await client.from(table).upsert({...op.payload,id:String(op.id),user_id:user.id,vehicle_id:op.vehicleId},{onConflict:'id'}).select().single();
+              if(r.error)throw r.error; result=r.data;
+            }
+          }
+          if(result)updateLocalVersion(op,result);
+        }catch(e){ keep.push(op); status=c('pending_sync'); }
+      }
+      outbox=keep; persistOutbox(); persistFleet();
+      if(hadConflict)setTimeout(()=>schedulePull(),0);
+      return hasPendingForUser();
+    }finally{ flushing=false; }
+  }
+
+  function queueVehicle(rec=currentRec()){
+    if(!user||!rec)return;
+    queueOp({type:'vehicle',action:'upsert',id:rec.id,baseUpdatedAt:rec.updatedAt||null,payload:vehiclePayload(rec)});
+  }
+  function queueFuel(x,vid=vehicleId){ if(user&&x)queueOp({type:'fuel',action:'upsert',id:String(x.id),vehicleId:vid,baseUpdatedAt:x.updatedAt||null,payload:fuelPayload(x,vid)}); }
+  function queueMaint(x,vid=vehicleId){ if(user&&x)queueOp({type:'maint',action:'upsert',id:String(x.id),vehicleId:vid,baseUpdatedAt:x.updatedAt||null,payload:maintPayload(x,vid)}); }
+
+  async function pushVehicle(){ if(!client||!user||!vehicleId||busy)return; const rec=currentRec(); if(!rec)return; queueVehicle(rec); if(await flushOutbox())status=c('pending_sync'); }
+  async function pushFuel(x,vid=vehicleId){ if(!client||!user||busy||!x)return; queueFuel(x,vid); if(await flushOutbox())status=c('pending_sync'); }
+  async function pushMaint(x,vid=vehicleId){ if(!client||!user||busy||!x)return; queueMaint(x,vid); if(await flushOutbox())status=c('pending_sync'); }
 
   async function insertVehicle(rec){
     if(!client||!user||!rec)return;
-    const {error}=await client.from('ruta_vehicles').insert({id:rec.id,user_id:user.id,...vehiclePayload(rec)});
-    if(error && error.code !== '23505') throw error;
+    queueOp({type:'vehicle',action:'upsert',id:rec.id,baseUpdatedAt:rec.updatedAt||null,payload:vehiclePayload(rec)});
+    await flushOutbox();
   }
 
   async function mergeMissing(table, rows, mapper){
@@ -200,12 +294,14 @@
     const {data,error}=await client.from(table).select('id').eq('vehicle_id',vehicleId).eq('user_id',user.id);
     if(error) throw error;
     const ids=new Set((data||[]).map(r=>String(r.id)));
-    const missing=rows.filter(r=>!ids.has(String(r.id))).map(mapper);
+    const missing=rows.filter(r=>!ids.has(String(r.id))).map(r=>mapper(r,vehicleId));
     if(missing.length){ const {error:e}=await client.from(table).insert(missing); if(e) throw e; }
   }
 
-  async function fetchCloudVehicles(){
-    const {data,error}=await client.from('ruta_vehicles').select('*').eq('user_id',user.id).is('archived_at',null).order('created_at',{ascending:true});
+  async function fetchCloudVehicles(includeArchived=false){
+    let q=client.from('ruta_vehicles').select('*').eq('user_id',user.id).order('created_at',{ascending:true});
+    if(!includeArchived)q=q.is('archived_at',null);
+    const {data,error}=await q;
     if(error) throw error;
     return data || [];
   }
@@ -217,40 +313,47 @@
   }
 
   async function reconcileVehicles(){
-    let cloudRows=await fetchCloudVehicles();
-    let locals=vehicleList();
+    let allRows=await fetchCloudVehicles(true);
+    let activeRows=allRows.filter(v=>!v.archived_at);
+    const archivedIds=new Set(allRows.filter(v=>v.archived_at).map(v=>v.id));
+    for(const id of archivedIds)delete fleet.vehicles[id];
 
-    if(cloudRows.length && locals.length===1 && !cloudRows.some(v=>v.id===locals[0].id)){
-      const old=locals[0];
-      const target=cloudRows[0];
+    let locals=vehicleList();
+    if(activeRows.length && locals.length===1 && !allRows.some(v=>v.id===locals[0].id)){
+      const old=locals[0], target=activeRows[0];
       const mapped={...cloudMeta(target),data:normalizeState(old.data)};
-      delete fleet.vehicles[old.id];
-      fleet.vehicles[target.id]=mapped;
-      fleet.activeVehicleId=target.id; vehicleId=target.id; state=mapped.data;
-      persistFleet();
+      delete fleet.vehicles[old.id]; fleet.vehicles[target.id]=mapped;
+      fleet.activeVehicleId=target.id; vehicleId=target.id; state=mapped.data; persistFleet();
       locals=vehicleList();
     }
 
-    if(!cloudRows.length){
-      for(const rec of locals) await insertVehicle(rec);
-      cloudRows=await fetchCloudVehicles();
-    }else{
-      const cloudIds=new Set(cloudRows.map(v=>v.id));
-      for(const rec of locals){ if(!cloudIds.has(rec.id)) await insertVehicle(rec); }
-      cloudRows=await fetchCloudVehicles();
+    const allIds=new Set(allRows.map(v=>v.id));
+    let inserted=false;
+    for(const rec of locals){
+      if(!allIds.has(rec.id)){ await insertVehicle(rec); inserted=true; }
+    }
+    if(inserted){
+      allRows=await fetchCloudVehicles(true); activeRows=allRows.filter(v=>!v.archived_at);
     }
 
-    for(const row of cloudRows){
-      const meta=cloudMeta(row);
-      const existing=fleet.vehicles[row.id];
-      if(existing){ Object.assign(existing,meta,{data:existing.data || stateFromVehicleRow(row)}); }
+    const activeIds=new Set(activeRows.map(v=>v.id));
+    for(const row of activeRows){
+      const meta=cloudMeta(row), existing=fleet.vehicles[row.id];
+      if(existing)Object.assign(existing,meta,{data:existing.data||stateFromVehicleRow(row)});
       else fleet.vehicles[row.id]={...meta,data:stateFromVehicleRow(row)};
+    }
+    for(const row of allRows){ if(row.archived_at)delete fleet.vehicles[row.id]; }
+
+    if(!fleet.vehicles[vehicleId]){
+      const next=Object.keys(fleet.vehicles).find(id=>activeIds.has(id)) || Object.keys(fleet.vehicles)[0];
+      if(next){ vehicleId=next; fleet.activeVehicleId=next; state=normalizeState(fleet.vehicles[next].data); }
     }
     persistFleet();
   }
 
   async function pull(mergeFirst=false){
     if(!client||!user||!vehicleId||busy) return;
+    if(await flushOutbox()){ status=c('pending_sync'); return; }
     busy=true;
     try{
       const localSnapshot=normalizeState(state);
@@ -273,8 +376,8 @@
 
       const legacyTrips=Array.isArray(state.trips)?state.trips:[];
       state.settings.odometer=Number(v.data.odometer||0); state.settings.currency=v.data.currency||'₱'; state.settings.language=v.data.language||'fil'; state.settings.theme=v.data.theme||'dark';
-      state.fuel=(f.data||[]).map(x=>({id:x.id,date:x.date,station:x.station,odometer:Number(x.odometer||0),liters:Number(x.liters||0),pricePerLiter:Number(x.price_per_liter||0),total:Number(x.total||0),lat:x.lat,lng:x.lng}));
-      state.maintenance=(m.data||[]).map(x=>({id:x.id,name:x.name,intervalKm:Number(x.interval_km||5000),lastOdo:Number(x.last_odo||0),source:x.source||'custom',sourceNote:x.source_note||'',templateKey:x.template_key||''}));
+      state.fuel=(f.data||[]).map(x=>({id:x.id,date:x.date,station:x.station,odometer:Number(x.odometer||0),liters:Number(x.liters||0),pricePerLiter:Number(x.price_per_liter||0),total:Number(x.total||0),lat:x.lat,lng:x.lng,updatedAt:x.updated_at||null}));
+      state.maintenance=(m.data||[]).map(x=>({id:x.id,name:x.name,intervalKm:Number(x.interval_km||5000),lastOdo:Number(x.last_odo||0),source:x.source||'custom',sourceNote:x.source_note||'',templateKey:x.template_key||'',updatedAt:x.updated_at||null}));
       state.trips=legacyTrips;
 
       const rec=currentRec(); if(rec){ Object.assign(rec,cloudMeta(v.data),{data:normalizeState(state)}); }
@@ -373,37 +476,46 @@
     fleetPanel(); cloudPanel();
   }
 
+  function settingsActions(sheet){
+    if(!sheet)return null;
+    const rows=[...sheet.children].filter(el=>el.classList?.contains('form-actions'));
+    return rows[rows.length-1]||null;
+  }
+
   function fleetPanel(){
     const sheet=document.querySelector('#overlayRoot .form-sheet');
     if(!sheet||sheet.querySelector('#rutaFleetPanel'))return;
-    const actions=sheet.querySelector('.form-actions');
+    const actions=settingsActions(sheet);
     const rec=currentRec();
     const box=document.createElement('div'); box.id='rutaFleetPanel'; box.className='field';
     const detail=[rec?.year,rec?.make,rec?.model,rec?.trim].filter(Boolean).join(' ');
     box.innerHTML=`<label>${c('vehicles')}</label><div style="font-size:13px;font-weight:700;margin-bottom:3px">${esc(vehicleDisplayName(rec))}</div>${detail?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${esc(detail)}</div>`:''}<div class="form-actions"><button class="btn btn-secondary" onclick="rutaManageVehicles()">${c('manage')}</button><button class="btn btn-secondary" onclick="rutaOpenAddVehicle()">${c('add_vehicle')}</button></div><button class="geo-btn" style="margin-top:10px" onclick="rutaShowMaintenancePlan()">${c('plan')}</button>`;
-    sheet.insertBefore(box,actions);
+    if(actions)sheet.insertBefore(box,actions); else sheet.appendChild(box);
   }
 
   function cloudPanel(){
     const sheet=document.querySelector('#overlayRoot .form-sheet');
     if(!sheet||sheet.querySelector('#rutaCloudPanel'))return;
-    const actions=sheet.querySelector('.form-actions');
+    const actions=settingsActions(sheet);
     const box=document.createElement('div'); box.id='rutaCloudPanel'; box.className='field';
     if(user){
-      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:8px">${c('connected')} ${esc(user.email||'')}${status?` • ${esc(status)}`:''}</div><div class="form-actions"><button class="btn btn-secondary" onclick="rutaCloudSyncNow()">${c('sync')}</button><button class="btn btn-secondary" onclick="rutaCloudSignOut()">${c('signout')}</button></div>`;
+      const pending=hasPendingForUser()?` • ${esc(c('pending_sync'))}`:'';
+      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:8px">${c('connected')} ${esc(user.email||'')}${pending}${status?` • ${esc(status)}`:''}</div><div class="form-actions"><button class="btn btn-secondary" onclick="rutaCloudSyncNow()">${c('sync')}</button><button class="btn btn-secondary" onclick="rutaCloudSignOut()">${c('signout')}</button></div>`;
     }else{
-      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:10px">${c('cloud_desc')}</div><input id="ruta_sync_email" type="email" autocomplete="email" placeholder="${c('email')}" style="margin-bottom:8px"><input id="ruta_sync_password" type="password" autocomplete="current-password" placeholder="${c('password')}">${status?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${esc(status)}</div>`:''}<div class="form-actions"><button class="btn btn-secondary" onclick="rutaCloudSignIn()">${c('signin')}</button><button class="btn btn-secondary" onclick="rutaCloudSignUp()">${c('signup')}</button></div>`;
+      const disabled=client?'':' disabled';
+      const info=status||(!client?c('sync_loading'):'');
+      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:10px">${c('cloud_desc')}</div><input id="ruta_sync_email" type="email" autocomplete="email" placeholder="${c('email')}" style="margin-bottom:8px"><input id="ruta_sync_password" type="password" autocomplete="current-password" placeholder="${c('password')}">${info?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${esc(info)}</div>`:''}<div class="form-actions"><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignIn()">${c('signin')}</button><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignUp()">${c('signup')}</button></div>`;
     }
-    sheet.insertBefore(box,actions);
+    if(actions)sheet.insertBefore(box,actions); else sheet.appendChild(box);
   }
 
   function panelRefresh(){ if(window.openSettings) openSettings(); setTimeout(injectPanels,0); }
   function creds(){return {email:(document.getElementById('ruta_sync_email')?.value||'').trim(),password:document.getElementById('ruta_sync_password')?.value||''};}
 
-  window.rutaCloudSignUp=async()=>{const x=creds();if(!x.email||x.password.length<6){status=c('invalid');panelRefresh();return;}const {data,error}=await client.auth.signUp(x);if(error)status=error.message;else if(data.session){user=data.user;initializedUserId=null;await ready(true);status=c('synced');}else status=c('check');panelRefresh();};
-  window.rutaCloudSignIn=async()=>{const x=creds();const {data,error}=await client.auth.signInWithPassword(x);if(error)status=error.message;else{user=data.user;initializedUserId=null;await ready(true);status=c('synced');}panelRefresh();};
-  window.rutaCloudSignOut=async()=>{if(channel){await client.removeChannel(channel);channel=null;}await client.auth.signOut();user=null;initializedUserId=null;status='';panelRefresh();};
-  window.rutaCloudSyncNow=async()=>{if(user){await reconcileVehicles();await pull(false);status=c('synced');}panelRefresh();};
+  window.rutaCloudSignUp=async()=>{if(!client){status=c('sync_loading');panelRefresh();return;}const x=creds();if(!x.email||x.password.length<6){status=c('invalid');panelRefresh();return;}const {data,error}=await client.auth.signUp(x);if(error)status=error.message;else if(data.session){user=data.user;initializedUserId=null;await ready(true);status=c('synced');}else status=c('check');panelRefresh();};
+  window.rutaCloudSignIn=async()=>{if(!client){status=c('sync_loading');panelRefresh();return;}const x=creds();if(!x.email||x.password.length<6){status=c('invalid');panelRefresh();return;}const {data,error}=await client.auth.signInWithPassword(x);if(error)status=error.message;else{user=data.user;initializedUserId=null;await ready(true);status=c('synced');}panelRefresh();};
+  window.rutaCloudSignOut=async()=>{if(!client)return;if(channel){await client.removeChannel(channel);channel=null;}await client.auth.signOut();user=null;initializedUserId=null;status='';panelRefresh();};
+  window.rutaCloudSyncNow=async()=>{if(user){await flushOutbox();await reconcileVehicles();await pull(false);if(!hasPendingForUser())status=c('synced');}panelRefresh();};
 
   window.rutaSelectVehicle=async(id)=>{
     if(!fleet?.vehicles?.[id]||id===vehicleId)return;
@@ -450,20 +562,23 @@
     const addPlan=document.getElementById('rv_plan')?.checked!==false;
     if(!name) name=[year,make,model].filter(Boolean).join(' ')||c('custom_vehicle');
     const id=uuid(); const data=blankVehicleState(); data.settings.odometer=odo;
-    const rec={id,name,vehicleType:type,year,make,model,trim,engine:'',transmission:'',planSource:'',data};
+    const rec={id,name,vehicleType:type,year,make,model,trim,engine:'',transmission:'',planSource:'',updatedAt:null,data};
     fleet.vehicles[id]=rec; persistFleet();
-    if(client&&user){ try{await insertVehicle(rec);}catch(e){status=e.message||String(e);} }
+    if(client&&user){ try{await insertVehicle(rec);}catch(e){status=c('pending_sync');} }
     await window.rutaSelectVehicle(id);
     if(addPlan){ closeOverlay(); await window.rutaShowMaintenancePlan(); } else { closeOverlay(); renderVehicleBar(); }
   };
 
   window.rutaRemoveVehicle=async(id)=>{
     const rows=vehicleList(); if(rows.length<=1){alert(c('last_vehicle'));return;} if(!confirm(c('remove_vehicle')))return;
-    if(client&&user){const {error}=await client.from('ruta_vehicles').update({archived_at:nowIso()}).eq('id',id).eq('user_id',user.id);if(error){status=error.message;return;}}
+    const rec=fleet.vehicles[id];
+    if(user&&rec)queueOp({type:'vehicle',action:'archive',id,baseUpdatedAt:rec.updatedAt||null,deletedAt:nowIso()});
     delete fleet.vehicles[id];
     if(vehicleId===id){const next=Object.keys(fleet.vehicles)[0];vehicleId=next;fleet.activeVehicleId=next;state=normalizeState(fleet.vehicles[next].data);}
-    persistFleet(); if(window.applyTheme)applyTheme(); if(window.render)render(); renderVehicleBar(); status=c('vehicle_removed'); window.rutaManageVehicles();
-    if(client&&user)await pull(false);
+    persistFleet(); if(window.applyTheme)applyTheme(); if(window.render)render(); renderVehicleBar();
+    let pending=false;
+    if(client&&user){pending=await flushOutbox();if(!pending){try{await reconcileVehicles();await pull(false);}catch(e){pending=true;}}}
+    status=pending?c('pending_sync'):c('vehicle_removed'); window.rutaManageVehicles();
   };
 
   async function exactTemplate(rec){
@@ -522,16 +637,20 @@
 
   window.rutaRemoveFuel=async(id)=>{
     if(!confirm(c('remove_fuel')))return;
+    const vid=vehicleId, item=state.fuel.find(x=>String(x.id)===String(id));
     state.fuel=state.fuel.filter(x=>String(x.id)!==String(id)); await saveData();
-    if(client&&user){const {error}=await client.from('ruta_fuel_entries').update({deleted_at:nowIso()}).eq('id',String(id)).eq('vehicle_id',vehicleId).eq('user_id',user.id);if(error)status=error.message;}
-    if(window.render)render(); status=c('fuel_removed');
+    if(user&&item)queueOp({type:'fuel',action:'delete',id:String(id),vehicleId:vid,baseUpdatedAt:item.updatedAt||null,deletedAt:nowIso()});
+    const pending=client&&user?await flushOutbox():false;
+    if(window.render)render(); status=pending?c('pending_sync'):c('fuel_removed');
   };
 
   window.rutaRemoveMaint=async(id)=>{
     if(!confirm(c('remove_maint')))return;
+    const vid=vehicleId, item=state.maintenance.find(x=>String(x.id)===String(id));
     state.maintenance=state.maintenance.filter(x=>String(x.id)!==String(id)); await saveData();
-    if(client&&user){const {error}=await client.from('ruta_maintenance_items').update({deleted_at:nowIso()}).eq('id',String(id)).eq('vehicle_id',vehicleId).eq('user_id',user.id);if(error)status=error.message;}
-    if(window.render)render(); status=c('maint_removed');
+    if(user&&item)queueOp({type:'maint',action:'delete',id:String(id),vehicleId:vid,baseUpdatedAt:item.updatedAt||null,deletedAt:nowIso()});
+    const pending=client&&user?await flushOutbox():false;
+    if(window.render)render(); status=pending?c('pending_sync'):c('maint_removed');
   };
 
   function wrapFunctions(){
@@ -564,9 +683,10 @@
   async function init(){
     try{
       while(typeof state === 'undefined' || !state) await new Promise(r=>setTimeout(r,30));
-      ensureFleet(); injectStyles(); wrapFunctions(); if(window.render)render();
+      ensureFleet(); loadOutbox(); injectStyles(); wrapFunctions(); if(window.render)render();
       const lib=await loadSupabase();
       client=lib.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+      const visibleCloud=document.getElementById('rutaCloudPanel'); if(visibleCloud){visibleCloud.remove();cloudPanel();}
       const {data}=await client.auth.getSession(); user=data.session?.user||null;
       client.auth.onAuthStateChange((_e,s)=>{
         const next=s?.user||null; user=next;

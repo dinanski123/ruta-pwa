@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v6-public-templates';
+const CACHE_NAME = 'ruta-cache-v7-sync-hardening';
 const APP_SHELL = [
   './',
   './index.html',
