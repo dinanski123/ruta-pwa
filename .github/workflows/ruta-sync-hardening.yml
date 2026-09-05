@@ -1,0 +1,31 @@
+name: One-time RUTA cloud sync hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ruta-sync-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply patch
+        run: python scripts/ruta-sync-hardening.py
+      - name: Validate JavaScript
+        run: node --check cloud-sync.js
+      - name: Commit repair and remove temporary files
+        shell: bash
+        run: |
+          git rm .github/workflows/ruta-sync-hardening.yml scripts/ruta-sync-hardening.py
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add cloud-sync.js index.html service-worker.js
+          git commit -m "Fix cloud login UI and harden cross-device sync"
+          git push
