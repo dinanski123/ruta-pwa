@@ -22,7 +22,7 @@
   const copy = {
     en: {
       cloud_title:'Cloud sync', cloud_desc:'Use the same account on Android and iPhone to keep RUTA data in sync.',
-      email:'Email', password:'Password', signin:'Sign in', signup:'Create account', signout:'Sign out', sync:'Sync now',
+      email:'Email', password:'Password', show_password:'Show password', signin:'Sign in', signup:'Create account', signout:'Sign out', sync:'Sync now',
       connected:'Connected as', synced:'Synced', check:'Check your email to confirm your account, then sign in.',
       invalid:'Enter a valid email and a password with at least 6 characters.',
       sync_loading:'Connecting to cloud…', pending_sync:'Offline changes saved — waiting to sync.', stale_change:'A newer cloud change was kept; a stale local edit was skipped.',
@@ -42,7 +42,7 @@
     },
     fil: {
       cloud_title:'Cloud sync', cloud_desc:'Gamitin ang parehong account sa Android at iPhone para mag-sync ang RUTA data.',
-      email:'Email', password:'Password', signin:'Mag-sign in', signup:'Gumawa ng account', signout:'Mag-sign out', sync:'I-sync ngayon',
+      email:'Email', password:'Password', show_password:'Ipakita ang password', signin:'Mag-sign in', signup:'Gumawa ng account', signout:'Mag-sign out', sync:'I-sync ngayon',
       connected:'Nakakonekta bilang', synced:'Naka-sync', check:'I-check ang email mo para kumpirmahin ang account, pagkatapos ay mag-sign in.',
       invalid:'Maglagay ng valid na email at password na may hindi bababa sa 6 na character.',
       sync_loading:'Kumokonekta sa cloud…', pending_sync:'Naka-save ang offline changes — naghihintay mag-sync.', stale_change:'Mas bagong cloud change ang pinanatili; nilaktawan ang lumang local edit.',
@@ -514,13 +514,14 @@
     }else{
       const disabled=client?'':' disabled';
       const info=status||(!client?c('sync_loading'):'');
-      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:10px">${c('cloud_desc')}</div><input id="ruta_sync_email" type="email" autocomplete="email" placeholder="${c('email')}" style="margin-bottom:8px"><input id="ruta_sync_password" type="password" autocomplete="current-password" placeholder="${c('password')}">${info?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${esc(info)}</div>`:''}<div class="form-actions"><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignIn()">${c('signin')}</button><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignUp()">${c('signup')}</button></div>`;
+      box.innerHTML=`<label>${c('cloud_title')}</label><div style="font-size:12px;color:var(--muted);margin-bottom:10px">${c('cloud_desc')}</div><input id="ruta_sync_email" type="email" autocomplete="email" placeholder="${c('email')}" style="margin-bottom:8px"><input id="ruta_sync_password" type="password" autocomplete="current-password" placeholder="${c('password')}"><label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer"><input id="ruta_sync_show_password" type="checkbox" onchange="rutaToggleCloudPassword(this.checked)" style="width:auto;margin:0"><span>${c('show_password')}</span></label>${info?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${esc(info)}</div>`:''}<div class="form-actions"><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignIn()">${c('signin')}</button><button class="btn btn-secondary"${disabled} onclick="rutaCloudSignUp()">${c('signup')}</button></div>`;
     }
     if(actions)sheet.insertBefore(box,actions); else sheet.appendChild(box);
   }
 
   function panelRefresh(){ if(window.openSettings) openSettings(); setTimeout(injectPanels,0); }
   function creds(){return {email:(document.getElementById('ruta_sync_email')?.value||'').trim(),password:document.getElementById('ruta_sync_password')?.value||''};}
+  window.rutaToggleCloudPassword=(show)=>{const input=document.getElementById('ruta_sync_password');if(input)input.type=show?'text':'password';};
 
   window.rutaCloudSignUp=async()=>{if(!client){status=c('sync_loading');panelRefresh();return;}const x=creds();if(!x.email||x.password.length<6){status=c('invalid');panelRefresh();return;}const {data,error}=await client.auth.signUp(x);if(error)status=error.message;else if(data.session){user=data.user;initializedUserId=null;await ready(true);status=c('synced');}else status=c('check');panelRefresh();};
   window.rutaCloudSignIn=async()=>{if(!client){status=c('sync_loading');panelRefresh();return;}const x=creds();if(!x.email||x.password.length<6){status=c('invalid');panelRefresh();return;}const {data,error}=await client.auth.signInWithPassword(x);if(error)status=error.message;else{user=data.user;initializedUserId=null;await ready(true);status=c('synced');}panelRefresh();};
