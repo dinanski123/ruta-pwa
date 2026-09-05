@@ -1,8 +1,11 @@
 {
-  "appId": "com.ferdz.ruta",
+  "appId": "app.ruta.tracker",
   "appName": "RUTA",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#101312"
   }
 }
