@@ -18,7 +18,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Patch RUTA OEM provider UI
-        run: python scripts/wire-oem-provider.py
+        run: |
+          sed -i "s/ruta-cache-v3-cloud-sync/ruta-cache-v4-fleet/" scripts/wire-oem-provider.py
+          python scripts/wire-oem-provider.py
 
       - name: Validate JavaScript
         run: node --check cloud-sync.js
