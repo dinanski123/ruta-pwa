@@ -1,4 +1,4 @@
-# OEM maintenance integration release build
+# Public maintenance templates release build
 name: Build Android APK
 
 on:
