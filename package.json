@@ -1,0 +1,26 @@
+{
+  "name": "ruta-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:web": "node scripts/prepare-capacitor-web.mjs",
+    "android:init": "npm run build:web && npx cap add android && node scripts/configure-android.mjs",
+    "android:sync": "npm run build:web && npx cap sync android && node scripts/configure-android.mjs",
+    "android:assets": "node scripts/prepare-android-assets.mjs && npx capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#101312' --iconBackgroundColorDark '#101312' --splashBackgroundColor '#101312' --splashBackgroundColorDark '#101312'",
+    "android:open": "npm run android:sync && npm run android:assets && npx cap open android",
+    "android:apk": "npm run android:sync && npm run android:assets && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.0",
+    "@capacitor/core": "8.5.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.0",
+    "sharp": "0.34.3"
+  }
+}
