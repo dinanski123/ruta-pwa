@@ -213,10 +213,16 @@
       if(rec){ rec.updatedAt=row.updated_at||rec.updatedAt||null; rec.archivedAt=row.archived_at||null; }
       return;
     }
+    const stamp=row.updated_at||null;
     const rec=fleet?.vehicles?.[op.vehicleId]; if(!rec?.data)return;
     const arr=op.type==='fuel'?rec.data.fuel:rec.data.maintenance;
     const item=Array.isArray(arr)?arr.find(x=>String(x.id)===String(op.id)):null;
-    if(item)item.updatedAt=row.updated_at||item.updatedAt||null;
+    if(item)item.updatedAt=stamp||item.updatedAt||null;
+    if(op.vehicleId===vehicleId){
+      const liveArr=op.type==='fuel'?state.fuel:state.maintenance;
+      const live=Array.isArray(liveArr)?liveArr.find(x=>String(x.id)===String(op.id)):null;
+      if(live)live.updatedAt=stamp||live.updatedAt||null;
+    }
   }
 
   async function flushOutbox(){
@@ -279,9 +285,9 @@
   function queueFuel(x,vid=vehicleId){ if(user&&x)queueOp({type:'fuel',action:'upsert',id:String(x.id),vehicleId:vid,baseUpdatedAt:x.updatedAt||null,payload:fuelPayload(x,vid)}); }
   function queueMaint(x,vid=vehicleId){ if(user&&x)queueOp({type:'maint',action:'upsert',id:String(x.id),vehicleId:vid,baseUpdatedAt:x.updatedAt||null,payload:maintPayload(x,vid)}); }
 
-  async function pushVehicle(){ if(!client||!user||!vehicleId||busy)return; const rec=currentRec(); if(!rec)return; queueVehicle(rec); if(await flushOutbox())status=c('pending_sync'); }
-  async function pushFuel(x,vid=vehicleId){ if(!client||!user||busy||!x)return; queueFuel(x,vid); if(await flushOutbox())status=c('pending_sync'); }
-  async function pushMaint(x,vid=vehicleId){ if(!client||!user||busy||!x)return; queueMaint(x,vid); if(await flushOutbox())status=c('pending_sync'); }
+  async function pushVehicle(){ if(!client||!user||!vehicleId)return; const rec=currentRec(); if(!rec)return; queueVehicle(rec); if(busy){status=c('pending_sync');return;} if(await flushOutbox())status=c('pending_sync'); }
+  async function pushFuel(x,vid=vehicleId){ if(!client||!user||!x)return; queueFuel(x,vid); if(busy){status=c('pending_sync');return;} if(await flushOutbox())status=c('pending_sync'); }
+  async function pushMaint(x,vid=vehicleId){ if(!client||!user||!x)return; queueMaint(x,vid); if(busy){status=c('pending_sync');return;} if(await flushOutbox())status=c('pending_sync'); }
 
   async function insertVehicle(rec){
     if(!client||!user||!rec)return;
@@ -373,6 +379,7 @@
         client.from('ruta_maintenance_items').select('*').eq('vehicle_id',vehicleId).eq('user_id',user.id).is('deleted_at',null)
       ]);
       if(v.error) throw v.error; if(f.error) throw f.error; if(m.error) throw m.error;
+      if(hasPendingForUser()){ status=c('pending_sync'); return; }
 
       const legacyTrips=Array.isArray(state.trips)?state.trips:[];
       state.settings.odometer=Number(v.data.odometer||0); state.settings.currency=v.data.currency||'₱'; state.settings.language=v.data.language||'fil'; state.settings.theme=v.data.theme||'dark';
@@ -385,7 +392,10 @@
       if(window.applyTheme) applyTheme(); document.documentElement.lang=state.settings.language==='en'?'en':'fil'; if(window.render) render();
       status=c('synced');
     }catch(e){ status=e.message||String(e); }
-    finally{ busy=false; }
+    finally{
+      busy=false;
+      if(hasPendingForUser())setTimeout(async()=>{const pending=await flushOutbox();if(!pending)schedulePull();},0);
+    }
   }
 
   function schedulePull(){ clearTimeout(pullTimer); pullTimer=setTimeout(()=>pull(false),350); }
