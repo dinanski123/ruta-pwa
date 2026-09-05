@@ -1,0 +1,81 @@
+name: Apply odometer and maintenance edit
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'RUN odo maintenance edit'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          def rep(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {n}')
+              s = s.replace(old, new, 1)
+
+          rep(
+              "    settings:'Settings', language:'Language', currency:'Currency', theme:'Appearance',\n    dark:'Dark', light:'Light', close:'Close',",
+              "    settings:'Settings', language:'Language', currency:'Currency', theme:'Appearance',\n    starting_odo:'Current / starting odometer (km)', save_odo:'Save odometer', edit:'Edit', edit_maint_title:'Edit maintenance item',\n    dark:'Dark', light:'Light', close:'Close',",
+              'English translations'
+          )
+          rep(
+              "    settings:'Settings', language:'Wika', currency:'Currency', theme:'Itsura',\n    dark:'Dark', light:'Light', close:'Isara',",
+              "    settings:'Settings', language:'Wika', currency:'Currency', theme:'Itsura',\n    starting_odo:'Kasalukuyan / panimulang odometer (km)', save_odo:'I-save ang odometer', edit:'I-edit', edit_maint_title:'I-edit ang maintenance item',\n    dark:'Dark', light:'Light', close:'Isara',",
+              'Filipino translations'
+          )
+          rep(
+              "function setTheme(th){ state.settings.theme = th; applyTheme(); saveData(); render(); openSettings(); }\n\nfunction fmtMoney",
+              "function setTheme(th){ state.settings.theme = th; applyTheme(); saveData(); render(); openSettings(); }\nasync function saveStartingOdo(){\n  const input = document.getElementById('s_odo');\n  const odo = Number(input?.value);\n  if(!Number.isFinite(odo) || odo < 0) return;\n  state.settings.odometer = odo;\n  await saveData();\n  render();\n  openSettings();\n}\n\nfunction fmtMoney",
+              'starting odometer save function'
+          )
+          rep(
+              "        <h3>${t('settings')}</h3>\n        <div class=\"field\">\n          <label>${t('language')}</label>",
+              "        <h3>${t('settings')}</h3>\n        <div class=\"field\">\n          <label>${t('starting_odo')}</label>\n          <input id=\"s_odo\" type=\"number\" min=\"0\" step=\"1\" value=\"${currentOdo()}\">\n        </div>\n        <button class=\"geo-btn\" onclick=\"saveStartingOdo()\">${t('save_odo')}</button>\n        <div class=\"field\">\n          <label>${t('language')}</label>",
+              'settings odometer field'
+          )
+          rep(
+              "        <div class=\"pms-status ${status}\">${statusLabel}</div>\n        <button class=\"done-btn\" onclick=\"markDone('${m.id}')\">${t('done')}</button>",
+              "        <div class=\"pms-status ${status}\">${statusLabel}</div>\n        <button class=\"done-btn\" onclick=\"openEditMaintForm('${m.id}')\">${t('edit')}</button>\n        <button class=\"done-btn\" onclick=\"markDone('${m.id}')\">${t('done')}</button>",
+              'maintenance edit button'
+          )
+          rep(
+              "async function markDone(id){\n  const item = state.maintenance.find(m=>m.id===id);\n  if(item){ item.lastOdo = currentOdo(); await saveData(); render(); }\n}",
+              "function openEditMaintForm(id){\n  const item = state.maintenance.find(m=>m.id===id);\n  if(!item) return;\n  openOverlay(`\n    <div class=\"form-overlay\" onclick=\"if(event.target===this) closeOverlay()\">\n      <div class=\"form-sheet\">\n        <h3>${t('edit_maint_title')}</h3>\n        <div class=\"field\"><label>${t('item_name')}</label><input id=\"em_name\" type=\"text\" value=\"${item.name}\"></div>\n        <div class=\"field\"><label>${t('interval_km')}</label><input id=\"em_interval\" type=\"number\" min=\"1\" step=\"1\" value=\"${item.intervalKm}\"></div>\n        <div class=\"field\"><label>${t('last_done_odo')}</label><input id=\"em_last\" type=\"number\" min=\"0\" step=\"1\" value=\"${item.lastOdo}\"></div>\n        <div class=\"form-actions\">\n          <button class=\"btn btn-secondary\" onclick=\"closeOverlay()\">${t('cancel')}</button>\n          <button class=\"btn btn-primary\" onclick=\"saveEditMaintForm('${item.id}')\">${t('save')}</button>\n        </div>\n      </div>\n    </div>\n  `);\n}\nasync function saveEditMaintForm(id){\n  const item = state.maintenance.find(m=>m.id===id);\n  if(!item) return;\n  const name = document.getElementById('em_name').value.trim() || item.name;\n  const interval = Number(document.getElementById('em_interval').value);\n  const last = Number(document.getElementById('em_last').value);\n  if(!Number.isFinite(interval) || interval <= 0 || !Number.isFinite(last) || last < 0) return;\n  item.name = name;\n  item.intervalKm = interval;\n  item.lastOdo = last;\n  await saveData();\n  closeOverlay();\n  render();\n}\nasync function markDone(id){\n  const item = state.maintenance.find(m=>m.id===id);\n  if(item){ item.lastOdo = currentOdo(); await saveData(); render(); }\n}",
+              'maintenance edit functions'
+          )
+          rep(
+              "navigator.serviceWorker.register('service-worker.js').catch(e=>console.log('SW registration failed', e));",
+              "navigator.serviceWorker.register('service-worker.js?v=2-odometer-edit').catch(e=>console.log('SW registration failed', e));",
+              'service worker registration version'
+          )
+
+          p.write_text(s)
+          PY
+
+          # Verify intended feature markers exist before committing.
+          grep -q "saveStartingOdo" index.html
+          grep -q "openEditMaintForm" index.html
+          grep -q "saveEditMaintForm" index.html
+          grep -q "service-worker.js?v=2-odometer-edit" index.html
+
+          rm -f .odo-maint-trigger .github/workflows/odo-maint-edit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add editable starting odometer and maintenance km"
+          git push origin HEAD:main
