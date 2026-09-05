@@ -1,0 +1,7 @@
+node_modules/
+www/
+android/
+.gradle/
+.idea/
+*.iml
+.DS_Store
