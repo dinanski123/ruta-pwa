@@ -1,7 +1,8 @@
-const CACHE_NAME = 'ruta-cache-v2-translations';
+const CACHE_NAME = 'ruta-cache-v3-cloud-sync';
 const APP_SHELL = [
   './',
   './index.html',
+  './cloud-sync.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
