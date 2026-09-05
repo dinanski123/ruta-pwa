@@ -1,0 +1,119 @@
+name: One-time RUTA public templates only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ruta-public-templates-only.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove OEM provider integration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('cloud-sync.js')
+          s=p.read_text()
+          original=s
+
+          def rep(old,new,label):
+              global s
+              n=s.count(old)
+              if n!=1:
+                  raise SystemExit(f'{label}: expected 1, got {n}')
+              s=s.replace(old,new,1)
+
+          rep("      exact_plan:'Manufacturer schedule available', no_exact:'No verified manufacturer-specific matrix is stored for this exact vehicle yet, so RUTA is showing a general baseline.',\n      market:'Market', philippines:'Philippines', united_states:'United States', canada:'Canada', other_market:'Other', vin_optional:'VIN (optional)',\n      provider_unconfigured:'Live OEM lookup is ready but needs CarScan credentials in Supabase.', provider_signin:'Sign in to Cloud sync to use live OEM lookup.', provider_unsupported:'Live OEM lookup currently covers cars; motorcycles keep the verified-template/general fallback.',\n      oem_reference:'US-market OEM reference — verify against your local owner’s manual.', recurring_only:'Only recurring OEM items can be added to the Maintenance tracker; one-off/irregular items remain visible in this matrix.',\n      due_at:'due at', manufacturer_badge:'Manufacturer plan', oem_reference_badge:'OEM reference', baseline_badge:'RUTA baseline',",
+              "      exact_plan:'Verified public-source maintenance schedule available', no_exact:'No verified public-source maintenance template is stored for this exact vehicle yet, so RUTA is showing a general baseline.',\n      public_plan_badge:'Public-source plan', baseline_badge:'RUTA baseline', view_source:'Open public source',",
+              'English provider copy')
+
+          rep("      exact_plan:'May manufacturer schedule', no_exact:'Wala pang verified manufacturer-specific matrix para sa eksaktong sasakyang ito, kaya general baseline muna ang ipinapakita ng RUTA.',\n      market:'Market', philippines:'Pilipinas', united_states:'United States', canada:'Canada', other_market:'Iba pa', vin_optional:'VIN (opsyonal)',\n      provider_unconfigured:'Handa na ang live OEM lookup pero kailangan pang i-configure ang CarScan credentials sa Supabase.', provider_signin:'Mag-sign in sa Cloud sync para magamit ang live OEM lookup.', provider_unsupported:'Kotse muna ang sakop ng live OEM lookup; verified-template/general fallback muna ang motorsiklo.',\n      oem_reference:'US-market OEM reference — i-verify sa local owner’s manual mo.', recurring_only:'Recurring OEM items lang ang puwedeng idagdag sa Maintenance tracker; mananatili sa matrix ang one-off/irregular items.',\n      due_at:'due sa', manufacturer_badge:'Manufacturer plan', oem_reference_badge:'OEM reference', baseline_badge:'RUTA baseline',",
+              "      exact_plan:'May verified public-source maintenance schedule', no_exact:'Wala pang verified public-source maintenance template para sa eksaktong sasakyang ito, kaya general baseline muna ang ipinapakita ng RUTA.',\n      public_plan_badge:'Public-source plan', baseline_badge:'RUTA baseline', view_source:'Buksan ang public source',",
+              'Filipino provider copy')
+
+          rep("          [id]:{id,name:'My vehicle',vehicleType:'car',market:'PH',vin:'',year:null,make:'',model:'',trim:'',engine:'',transmission:'',planSource:'',data:normalizeState(state)}",
+              "          [id]:{id,name:'My vehicle',vehicleType:'car',year:null,make:'',model:'',trim:'',engine:'',transmission:'',planSource:'',data:normalizeState(state)}",
+              'default provider fields')
+
+          rep("      vehicleType:v.vehicle_type || 'car',\n      market:v.market || 'PH', vin:v.vin || '',\n      year:v.year ?? null,",
+              "      vehicleType:v.vehicle_type || 'car',\n      year:v.year ?? null,",
+              'cloud provider fields')
+
+          rep("      name:rec?.name || 'My vehicle', vehicle_type:rec?.vehicleType || 'car', market:rec?.market || 'PH', vin:rec?.vin || null, year:rec?.year || null,",
+              "      name:rec?.name || 'My vehicle', vehicle_type:rec?.vehicleType || 'car', year:rec?.year || null,",
+              'payload provider fields')
+
+          rep("            const badge=document.createElement('div'); badge.className='ruta-source'; badge.textContent=item.source==='manufacturer'?c('manufacturer_badge'):item.source==='oem_reference'?c('oem_reference_badge'):c('baseline_badge'); left.appendChild(badge);",
+              "            const badge=document.createElement('div'); badge.className='ruta-source'; badge.textContent=['public_template','manufacturer','oem_reference'].includes(item.source)?c('public_plan_badge'):c('baseline_badge'); left.appendChild(badge);",
+              'maintenance badge')
+
+          old_form="<div class=\"field\"><label>${c('vehicle_type')}</label><select id=\"rv_type\" onchange=\"rutaVehicleTypeChanged()\"><option value=\"car\">${c('car')}</option><option value=\"motorcycle\">${c('motorcycle')}</option></select></div><div class=\"field\"><label>${c('market')}</label><select id=\"rv_market\"><option value=\"PH\">${c('philippines')}</option><option value=\"US\">${c('united_states')}</option><option value=\"CA\">${c('canada')}</option><option value=\"OTHER\">${c('other_market')}</option></select></div>"
+          new_form="<div class=\"field\"><label>${c('vehicle_type')}</label><select id=\"rv_type\" onchange=\"rutaVehicleTypeChanged()\"><option value=\"car\">${c('car')}</option><option value=\"motorcycle\">${c('motorcycle')}</option></select></div>"
+          rep(old_form,new_form,'market UI')
+
+          rep("<div class=\"field\"><label>${c('model')}</label><input id=\"rv_model\" type=\"text\" list=\"rv_models\" autocomplete=\"off\"><datalist id=\"rv_models\"></datalist></div><div class=\"field\"><label>${c('vin_optional')}</label><input id=\"rv_vin\" type=\"text\" maxlength=\"17\" autocapitalize=\"characters\" autocomplete=\"off\"></div><div class=\"field\"><label>${c('trim')}</label>",
+              "<div class=\"field\"><label>${c('model')}</label><input id=\"rv_model\" type=\"text\" list=\"rv_models\" autocomplete=\"off\"><datalist id=\"rv_models\"></datalist></div><div class=\"field\"><label>${c('trim')}</label>",
+              'VIN UI')
+
+          rep("    const market=(document.getElementById('rv_market')?.value||'PH'); const vin=(document.getElementById('rv_vin')?.value||'').trim().toUpperCase();\n    const make=",
+              "    const make=",
+              'save provider fields')
+
+          rep("    const rec={id,name,vehicleType:type,market,vin,year,make,model,trim,engine:'',transmission:'',planSource:'',data};",
+              "    const rec={id,name,vehicleType:type,year,make,model,trim,engine:'',transmission:'',planSource:'',data};",
+              'vehicle record provider fields')
+
+          s,n=re.subn(r"\n  async function providerPlan\(rec\)\{.*?\n  \}\n\n  function generalPlan", "\n  function generalPlan", s, count=1, flags=re.S)
+          if n!=1: raise SystemExit(f'providerPlan removal: expected 1, got {n}')
+
+          rep("      return {kind:'manufacturer',label:exact.source_label||c('exact_plan'),sourceUrl:exact.source_url||'',items,matrix:items};\n    }\n    const provider=await providerPlan(rec);\n    if(provider?.plan)return provider.plan;\n    const fallback=generalPlan(rec);\n    if(provider?.status==='unconfigured')fallback.providerNote=c('provider_unconfigured');\n    else if(provider?.status==='signin')fallback.providerNote=c('provider_signin');\n    else if(provider?.status==='unsupported')fallback.providerNote=c('provider_unsupported');\n    return fallback;",
+              "      return {kind:'public_template',label:exact.source_label||c('exact_plan'),sourceUrl:exact.source_url||'',items,matrix:items};\n    }\n    return generalPlan(rec);",
+              'suggested plan provider path')
+
+          rep("    const message=plan.kind==='manufacturer'?c('exact_plan'):plan.kind==='oem_reference'?c('oem_reference'):c('no_exact');",
+              "    const message=plan.kind==='public_template'?c('exact_plan'):c('no_exact');",
+              'plan message')
+
+          rep("<div class=\"ruta-plan-note\">${esc(message)}</div>${plan.providerNote?`<div class=\"ruta-plan-note\">${esc(plan.providerNote)}</div>`:''}<div class=\"ruta-plan-note\"><strong>${c('source')}:</strong> ${esc(plan.label)}</div>${plan.kind!=='general'?`<div class=\"ruta-plan-note\">${esc(c('recurring_only'))}</div>`:''}${matrixHtml",
+              "<div class=\"ruta-plan-note\">${esc(message)}</div><div class=\"ruta-plan-note\"><strong>${c('source')}:</strong> ${esc(plan.label)}</div>${plan.sourceUrl?`<div class=\"ruta-plan-note\"><a href=\"${esc(plan.sourceUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">${c('view_source')}</a></div>`:''}${matrixHtml",
+              'plan provider notes')
+
+          rep("source:plan.kind==='manufacturer'?'manufacturer':plan.kind==='oem_reference'?'oem_reference':'general'",
+              "source:plan.kind==='public_template'?'public_template':'general'",
+              'applied plan source')
+
+          p.write_text(s)
+
+          ip=Path('index.html'); i=ip.read_text();
+          if "service-worker.js?v=5-oem-provider" not in i: raise SystemExit('index SW marker missing')
+          i=i.replace("service-worker.js?v=5-oem-provider","service-worker.js?v=6-public-templates",1); ip.write_text(i)
+
+          swp=Path('service-worker.js'); sw=swp.read_text();
+          if "ruta-cache-v5-oem-provider" not in sw: raise SystemExit('SW cache marker missing')
+          sw=sw.replace("ruta-cache-v5-oem-provider","ruta-cache-v6-public-templates",1); swp.write_text(sw)
+
+          if s==original: raise SystemExit('no cloud-sync changes')
+          PY
+
+      - name: Validate JavaScript
+        run: node --check cloud-sync.js
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add cloud-sync.js index.html service-worker.js
+          git rm .github/workflows/ruta-public-templates-only.yml
+          git commit -m "Remove OEM provider and keep public maintenance templates"
+          git push
