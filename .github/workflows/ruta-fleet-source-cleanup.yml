@@ -1,0 +1,82 @@
+name: One-time RUTA fleet source cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ruta-fleet-source-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Remove Trip Log source and bump PWA registration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text()
+          original = s
+
+          def sub_exact(old, new, label):
+              global s
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 exact match, got {count}')
+              s = s.replace(old, new, 1)
+
+          sub_exact(
+              '<meta name="description" content="Sundan ang bawat kilometro — fuel log, trip tracker, maintenance schedule, at fuel watch.">',
+              '<meta name="description" content="Sundan ang bawat kilometro — fuel log, maintenance schedule, at fuel watch.">',
+              'meta description'
+          )
+
+          sub_exact(
+              "  route: `<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"6\" cy=\"19\" r=\"2\"/><circle cx=\"18\" cy=\"5\" r=\"2\"/><path d=\"M8 19h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4h-.5\"/></svg>`,\n",
+              '',
+              'route icon'
+          )
+
+          sub_exact("    tab_home:'Dashboard', tab_fuel:'Fuel', tab_trips:'Trips', tab_pms:'Maintenance', tab_nearby:'Nearby',", "    tab_home:'Dashboard', tab_fuel:'Fuel', tab_pms:'Maintenance', tab_nearby:'Nearby',", 'EN trip tab')
+          sub_exact("    trip_log:'Trip log',\n    no_trips:'No trips logged yet. Track your drives here.',\n", '', 'EN trip labels')
+          sub_exact("    add_trip_title:'Add trip',\n    start_odo:'Start odometer',\n    end_odo:'End odometer',\n    purpose:'Purpose',\n    purpose_work:'Work', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Other',\n    note_optional:'Note (optional)',\n    note_placeholder:'e.g. airport pick-up',\n", '', 'EN trip form labels')
+
+          sub_exact("    tab_home:'Dashboard', tab_fuel:'Gasolina', tab_trips:'Byahe', tab_pms:'PMS', tab_nearby:'Malapit',", "    tab_home:'Dashboard', tab_fuel:'Gasolina', tab_pms:'PMS', tab_nearby:'Malapit',", 'FIL trip tab')
+          sub_exact("    trip_log:'Trip log',\n    no_trips:'Wala pang naka-log na byahe. I-track ang mga trip mo dito.',\n", '', 'FIL trip labels')
+          sub_exact("    add_trip_title:'Magdagdag ng trip',\n    start_odo:'Simulang odometer',\n    end_odo:'Tapos na odometer',\n    purpose:'Layunin',\n    purpose_work:'Trabaho', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Iba pa',\n    note_optional:'Note (opsyonal)',\n    note_placeholder:'hal. pick-up sa airport',\n", '', 'FIL trip form labels')
+
+          sub_exact("  {id:'trips', key:'tab_trips', icon:'route'},\n", '', 'trip tab config')
+          sub_exact("    trips: [],\n", '', 'default trip state')
+
+          s, n = re.subn(r"\nfunction localizedPurpose\(value\)\{.*?\n\}\nfunction localizedMaintenanceName", "\nfunction localizedMaintenanceName", s, count=1, flags=re.S)
+          if n != 1: raise SystemExit(f'localizedPurpose removal: expected 1, got {n}')
+
+          s, n = re.subn(r"\n/\* ---------- RENDER: TRIPS ---------- \*/.*?\n/\* ---------- RENDER: PMS ---------- \*/", "\n/* ---------- RENDER: PMS ---------- */", s, count=1, flags=re.S)
+          if n != 1: raise SystemExit(f'renderTrips removal: expected 1, got {n}')
+
+          s, n = re.subn(r"\nfunction openTripForm\(\)\{.*?\n\}\n\nfunction openMaintForm", "\nfunction openMaintForm", s, count=1, flags=re.S)
+          if n != 1: raise SystemExit(f'trip form removal: expected 1, got {n}')
+
+          sub_exact("  else if(activeTab==='trips') main.innerHTML = renderTrips();\n", '', 'trip render branch')
+          sub_exact("navigator.serviceWorker.register('service-worker.js?v=2-odometer-edit')", "navigator.serviceWorker.register('service-worker.js?v=4-fleet')", 'service worker registration')
+
+          if s == original:
+              raise SystemExit('No source changes made')
+          p.write_text(s)
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add index.html
+          git rm .github/workflows/ruta-fleet-source-cleanup.yml
+          git commit -m "Remove Trip Log and finalize fleet app shell"
+          git push
