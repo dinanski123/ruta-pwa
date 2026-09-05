@@ -7,11 +7,394 @@
 <meta name="description" content="Sundan ang bawat kilometro — fuel log, trip tracker, maintenance schedule, at fuel watch.">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#101312">
+
+<!-- iOS PWA support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RUTA">
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-<link rel="stylesheet" href="styles.css">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<!-- Icons -->
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --bg: #101312;
+  --panel: #1B211E;
+  --panel-border: #2E362F;
+  --panel-border-light: #3A433C;
+  --amber: #E8A33D;
+  --amber-dim: #4A3A1F;
+  --teal: #4FA895;
+  --teal-dim: #1E3A34;
+  --danger: #D9634F;
+  --danger-dim: #3D231F;
+  --text: #F2EFE6;
+  --muted: #8B9089;
+  --muted-dim: #5C635D;
+}
+html[data-theme="light"]{
+  --bg: #EDEEE9;
+  --panel: #FFFFFF;
+  --panel-border: #D9DCD3;
+  --panel-border-light: #C7CBC0;
+  --amber: #B8701A;
+  --amber-dim: #F3DEB8;
+  --teal: #287C6B;
+  --teal-dim: #D3EAE3;
+  --danger: #B0442F;
+  --danger-dim: #F3D8D0;
+  --text: #1B1F1C;
+  --muted: #5C635D;
+  --muted-dim: #9BA096;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family:'Manrope',sans-serif;
+  display:flex;
+  justify-content:center;
+  min-height:100vh;
+  min-height:100dvh;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+#phone{
+  width:100%;
+  max-width:430px;
+  min-height:100vh;
+  min-height:100dvh;
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  border-left:1px solid var(--panel-border);
+  border-right:1px solid var(--panel-border);
+}
+header{
+  padding:calc(18px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 14px calc(20px + env(safe-area-inset-left));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--panel-border);
+  gap:10px;
+}
+.brand{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:20px;
+  letter-spacing:1px;
+  color:var(--text);
+  flex-shrink:0;
+}
+.brand span{color:var(--amber);}
+.header-right{display:flex;align-items:center;gap:8px;}
+.odo-chip{
+  font-family:'JetBrains Mono',monospace;
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-radius:4px;
+  padding:5px 10px;
+  font-size:13px;
+  color:var(--teal);
+  white-space:nowrap;
+}
+.icon-btn{
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-radius:4px;
+  width:30px;
+  height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:var(--muted);
+  flex-shrink:0;
+}
+.icon-btn svg{width:16px;height:16px;}
+main{
+  flex:1;
+  padding:20px calc(20px + env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  overflow-y:auto;
+}
+.hero{
+  text-align:center;
+  padding:22px 10px 26px;
+  border-bottom:1px solid var(--panel-border);
+  margin-bottom:20px;
+}
+.hero .num{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:52px;
+  color:var(--text);
+  line-height:1;
+  letter-spacing:1px;
+}
+.hero .label{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:6px;
+  letter-spacing:0.3px;
+}
+.stat-row{
+  display:flex;
+  gap:12px;
+  margin-bottom:22px;
+}
+.stat-card{
+  flex:1;
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-radius:6px;
+  padding:14px 14px;
+  position:relative;
+}
+.stat-card .v{
+  font-family:'JetBrains Mono',monospace;
+  font-size:22px;
+  font-weight:700;
+}
+.stat-card .l{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+}
+.stat-card.amber .v{color:var(--amber);}
+.stat-card.teal .v{color:var(--teal);}
+.section-title{
+  font-size:15px;
+  font-weight:700;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.section-title .btn-add{
+  font-family:'Manrope',sans-serif;
+  font-size:13px;
+  font-weight:600;
+  color:var(--teal);
+  background:none;
+  border:none;
+  cursor:pointer;
+  padding:4px 0;
+}
+.pms-item{
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-left:3px solid var(--muted-dim);
+  border-radius:4px;
+  padding:12px 14px;
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.pms-item.overdue{border-left-color:var(--danger);}
+.pms-item.soon{border-left-color:var(--amber);}
+.pms-item.ok{border-left-color:var(--teal);}
+.pms-item .name{font-weight:600;font-size:14px;}
+.pms-item .sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.pms-status{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:3px;
+  white-space:nowrap;
+  margin-left:8px;
+}
+.pms-status.overdue{background:var(--danger-dim);color:var(--danger);}
+.pms-status.soon{background:var(--amber-dim);color:var(--amber);}
+.pms-status.ok{background:var(--teal-dim);color:var(--teal);}
+.list-card{
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-radius:6px;
+  padding:14px;
+  margin-bottom:10px;
+}
+.list-card .top-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  margin-bottom:6px;
+}
+.list-card .title{font-weight:700;font-size:14px;}
+.list-card .amount{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--amber);}
+.list-card .meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+.list-card .kml-badge{
+  display:inline-block;
+  margin-top:8px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  background:var(--teal-dim);
+  color:var(--teal);
+  padding:2px 8px;
+  border-radius:3px;
+}
+.empty-state{
+  text-align:center;
+  padding:40px 20px;
+  color:var(--muted);
+}
+.empty-state .big{font-size:32px;margin-bottom:10px;}
+.empty-state .msg{font-size:14px;line-height:1.5;}
+nav#tabbar{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:430px;
+  background:var(--panel);
+  border-top:1px solid var(--panel-border);
+  display:flex;
+  padding:8px calc(6px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
+}
+.tab-btn{
+  flex:1;
+  background:none;
+  border:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:6px 2px;
+  cursor:pointer;
+  color:var(--muted-dim);
+  font-family:'Manrope',sans-serif;
+  font-size:10.5px;
+  font-weight:600;
+}
+.tab-btn.active{color:var(--amber);}
+.tab-btn svg{width:20px;height:20px;}
+
+/* forms */
+.form-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(8,10,9,0.75);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  z-index:50;
+}
+.form-sheet{
+  width:100%;
+  max-width:430px;
+  background:var(--panel);
+  border-top:1px solid var(--panel-border-light);
+  border-radius:14px 14px 0 0;
+  padding:20px calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  max-height:85vh;
+  max-height:85dvh;
+  overflow-y:auto;
+}
+.form-sheet h3{margin:0 0 16px;font-size:17px;}
+.field{margin-bottom:14px;}
+.field label{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:5px;
+}
+.field input, .field select{
+  width:100%;
+  background:var(--bg);
+  border:1px solid var(--panel-border-light);
+  border-radius:5px;
+  color:var(--text);
+  padding:10px 12px;
+  font-family:'Manrope',sans-serif;
+  font-size:14px;
+}
+.field input:focus, .field select:focus{outline:1px solid var(--teal);}
+.field-row{display:flex;gap:10px;}
+.field-row .field{flex:1;}
+.geo-btn{
+  width:100%;
+  padding:9px;
+  background:var(--teal-dim);
+  color:var(--teal);
+  border:1px solid var(--panel-border-light);
+  border-radius:5px;
+  font-family:'Manrope',sans-serif;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  margin-bottom:14px;
+}
+.form-actions{display:flex;gap:10px;margin-top:6px;}
+.btn{
+  flex:1;
+  padding:12px;
+  border-radius:5px;
+  border:none;
+  font-family:'Manrope',sans-serif;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+}
+.btn-primary{background:var(--amber);color:#1A1508;}
+.btn-secondary{background:none;border:1px solid var(--panel-border-light);color:var(--muted);}
+.done-btn{
+  background:var(--teal-dim);
+  color:var(--teal);
+  border:1px solid var(--panel-border-light);
+  border-radius:4px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.location-banner{
+  background:var(--panel);
+  border:1px solid var(--panel-border-light);
+  border-radius:6px;
+  padding:12px 14px;
+  margin-bottom:16px;
+  font-size:12.5px;
+  color:var(--muted);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.location-banner .retry{
+  background:none;border:none;color:var(--teal);font-weight:700;font-size:12px;cursor:pointer;flex-shrink:0;
+}
+.station-card .dist{
+  font-family:'JetBrains Mono',monospace;
+  color:var(--teal);
+  font-size:13px;
+}
+.toggle-group{
+  display:flex;
+  background:var(--bg);
+  border:1px solid var(--panel-border-light);
+  border-radius:5px;
+  overflow:hidden;
+}
+.toggle-btn{
+  flex:1;
+  border:none;
+  background:none;
+  color:var(--muted);
+  font-family:'Manrope',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  padding:9px 8px;
+  cursor:pointer;
+}
+.toggle-btn.active{background:var(--amber-dim);color:var(--amber);}
+</style>
 </head>
 <body>
 <div id="phone">
@@ -28,9 +411,623 @@
   <nav id="tabbar"></nav>
 </div>
 <div id="overlayRoot"></div>
-<script src="app-core.js"></script>
-<script src="app-ui.js"></script>
-<script src="app-nearby-forms.js"></script>
-<script src="app-main.js"></script>
+
+<script>
+const ICONS = {
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
+  fuel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15"/><path d="M4 11h10"/><path d="M14 8l3 3v6a1.5 1.5 0 0 0 3 0v-5l-3-3"/><path d="M2 21h14"/></svg>`,
+  route: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4h-.5"/></svg>`,
+  wrench: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 1 0-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2-2z"/></svg>`,
+  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+};
+
+/* ---------- TRANSLATIONS ---------- */
+const TR = {
+  en: {
+    tab_home:'Dashboard', tab_fuel:'Fuel', tab_trips:'Trips', tab_pms:'Maintenance', tab_nearby:'Nearby',
+    odo_label:'current odometer',
+    avg_kml:'avg km/L',
+    month_spend:'spent this month',
+    upcoming_pms:'Upcoming maintenance',
+    no_pms:'No maintenance items yet.',
+    fuel_log:'Fuel log',
+    add:'+ Add',
+    no_fuel:'No fuel entries yet. Log your first fill-up.',
+    trip_log:'Trip log',
+    no_trips:'No trips logged yet. Track your drives here.',
+    maint_schedule:'Maintenance schedule',
+    add_item:'+ Item',
+    done:'Done',
+    tagged:'tagged',
+    fuel_watch:'Fuel watch',
+    getting_location:'Getting your location…',
+    sorted_by_distance:'📍 Sorted by distance from your current location.',
+    location_denied:'Location access was not allowed. Sorted by most recent visit instead.',
+    location_unavailable:"Location isn't available in this preview (works better once installed as a real PWA on your phone). Sorted by most recent visit.",
+    retry:'Retry',
+    no_stations:'No tagged stations yet. Log fuel with a station name to see them here.',
+    last_price:'Last price:',
+    last_visit:'Last visit:',
+    every:'every', last_done_at:'last done at',
+    status_overdue:(n)=>`${n}km overdue`,
+    status_soon:(n)=>`${n}km left`,
+    status_ok:(n)=>`${n}km left`,
+    add_fuel_title:'Add fuel entry',
+    tag_location_btn:'📍 Tag current location',
+    date:'Date',
+    station_name:'Gas station name',
+    station_placeholder:'e.g. Shell EDSA',
+    odo_now:'Current odometer (km)',
+    liters:'Liters',
+    price_per_liter:'Price/Liter',
+    cancel:'Cancel',
+    save:'Save',
+    add_trip_title:'Add trip',
+    start_odo:'Start odometer',
+    end_odo:'End odometer',
+    purpose:'Purpose',
+    purpose_work:'Work', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Other',
+    note_optional:'Note (optional)',
+    note_placeholder:'e.g. airport pick-up',
+    add_maint_title:'Add maintenance item',
+    item_name:'Name',
+    item_name_placeholder:'e.g. Brake fluid change',
+    interval_km:'Every how many km',
+    last_done_odo:'Last done at odometer (km)',
+    geo_getting:'Getting location…',
+    geo_tagged:'✓ Location tagged',
+    geo_unavailable:"Location not available in this preview — that's fine, go ahead and save",
+    geo_none:"Location not available on this device",
+    default_maint:['Oil change','Tire rotation','Air filter replacement','Brake check'],
+    settings:'Settings', language:'Language', currency:'Currency', theme:'Appearance',
+    dark:'Dark', light:'Light', close:'Close',
+  },
+  fil: {
+    tab_home:'Dashboard', tab_fuel:'Gasolina', tab_trips:'Byahe', tab_pms:'PMS', tab_nearby:'Malapit',
+    odo_label:'kasalukuyang odometer',
+    avg_kml:'avg km/L',
+    month_spend:'gastos ngayong buwan',
+    upcoming_pms:'Susunod na PMS',
+    no_pms:'Wala pang maintenance items.',
+    fuel_log:'Fuel log',
+    add:'+ Magdagdag',
+    no_fuel:'Wala pang naka-log na pag-gas. Idagdag ang unang fill-up mo.',
+    trip_log:'Trip log',
+    no_trips:'Wala pang naka-log na byahe. I-track ang mga trip mo dito.',
+    maint_schedule:'Maintenance schedule',
+    add_item:'+ Item',
+    done:'Tapos na',
+    tagged:'naka-tag',
+    fuel_watch:'Fuel watch',
+    getting_location:'Kinukuha ang iyong lokasyon…',
+    sorted_by_distance:'📍 Naka-sort ayon sa distansya mula sa kasalukuyang lokasyon mo.',
+    location_denied:'Hindi pinayagan ang location access. Naka-sort na lang ayon sa pinakabagong bisita.',
+    location_unavailable:'Location access hindi available sa preview na ito (mas gagana ito kapag naka-install na bilang PWA sa iyong phone). Naka-sort ayon sa pinakabagong bisita.',
+    retry:'Ulitin',
+    no_stations:'Wala pang naka-tag na estasyon. Mag-log ng gasolina na may station name para makita dito.',
+    last_price:'Huling presyo:',
+    last_visit:'Huling bisita:',
+    every:'bawat', last_done_at:'huling gawa sa',
+    status_overdue:(n)=>`${n}km overdue`,
+    status_soon:(n)=>`${n}km na lang`,
+    status_ok:(n)=>`${n}km pa`,
+    add_fuel_title:'Magdagdag ng fuel entry',
+    tag_location_btn:'📍 I-tag ang kasalukuyang lokasyon',
+    date:'Petsa',
+    station_name:'Pangalan ng gas station',
+    station_placeholder:'hal. Shell EDSA',
+    odo_now:'Odometer ngayon (km)',
+    liters:'Liters',
+    price_per_liter:'Presyo/Liter',
+    cancel:'Kanselahin',
+    save:'I-save',
+    add_trip_title:'Magdagdag ng trip',
+    start_odo:'Simulang odometer',
+    end_odo:'Tapos na odometer',
+    purpose:'Layunin',
+    purpose_work:'Trabaho', purpose_personal:'Personal', purpose_errand:'Errand', purpose_other:'Iba pa',
+    note_optional:'Note (opsyonal)',
+    note_placeholder:'hal. pick-up sa airport',
+    add_maint_title:'Magdagdag ng maintenance item',
+    item_name:'Pangalan',
+    item_name_placeholder:'hal. Palitan ng brake fluid',
+    interval_km:'Bawat ilang km',
+    last_done_odo:'Huling ginawa sa odometer (km)',
+    geo_getting:'Kinukuha ang lokasyon…',
+    geo_tagged:'✓ Na-tag ang lokasyon',
+    geo_unavailable:'Hindi available ang location dito — okay lang, ituloy ang pag-save',
+    geo_none:'Hindi available ang location sa device na ito',
+    default_maint:['Palitan ng oli','I-rotate ang gulong','Palitan ng air filter','I-check ang preno'],
+    settings:'Settings', language:'Wika', currency:'Currency', theme:'Itsura',
+    dark:'Dark', light:'Light', close:'Isara',
+  }
+};
+function t(key, ...args){
+  const dict = TR[state.settings.language] || TR.fil;
+  const val = dict[key];
+  if(typeof val === 'function') return val(...args);
+  return val !== undefined ? val : key;
+}
+
+const TABS = [
+  {id:'home', key:'tab_home', icon:'home'},
+  {id:'fuel', key:'tab_fuel', icon:'fuel'},
+  {id:'trips', key:'tab_trips', icon:'route'},
+  {id:'pms', key:'tab_pms', icon:'wrench'},
+  {id:'nearby', key:'tab_nearby', icon:'pin'},
+];
+
+let state = null;
+let activeTab = 'home';
+let geoState = { status:'idle', lat:null, lng:null }; // idle | loading | ok | denied | unavailable
+
+function defaultData(lang){
+  const names = TR[lang || 'fil'].default_maint;
+  return {
+    settings:{ odometer: 0, currency: '₱', language: lang || 'fil', theme: 'dark' },
+    fuel: [],
+    trips: [],
+    maintenance: [
+      {id:'m1', name:names[0], intervalKm:5000, lastOdo:0},
+      {id:'m2', name:names[1], intervalKm:10000, lastOdo:0},
+      {id:'m3', name:names[2], intervalKm:15000, lastOdo:0},
+      {id:'m4', name:names[3], intervalKm:10000, lastOdo:0},
+    ]
+  };
+}
+
+async function loadData(){
+  try{
+    const raw = localStorage.getItem('ruta-vehicle-data');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(!parsed.settings.language) parsed.settings.language = 'fil';
+      if(!parsed.settings.currency) parsed.settings.currency = '₱';
+      if(!parsed.settings.theme) parsed.settings.theme = 'dark';
+      return parsed;
+    }
+    return defaultData('fil');
+  }catch(e){
+    return defaultData('fil');
+  }
+}
+async function saveData(){
+  try{
+    localStorage.setItem('ruta-vehicle-data', JSON.stringify(state));
+  }catch(e){ console.error('save failed', e); }
+}
+
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', state.settings.theme || 'dark');
+}
+function setLanguage(lang){ state.settings.language = lang; saveData(); render(); openSettings(); }
+function setCurrency(c){ state.settings.currency = c; saveData(); render(); openSettings(); }
+function setTheme(th){ state.settings.theme = th; applyTheme(); saveData(); render(); openSettings(); }
+
+function fmtMoney(n){ return state.settings.currency + Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtKm(n){ return Number(n||0).toLocaleString('en-PH') + ' km'; }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function currentOdo(){ return state.settings.odometer || 0; }
+
+function computeFuelStats(){
+  const sorted = [...state.fuel].sort((a,b)=>a.odometer-b.odometer);
+  const kmls = [];
+  for(let i=1;i<sorted.length;i++){
+    const dist = sorted[i].odometer - sorted[i-1].odometer;
+    if(dist>0 && sorted[i].liters>0){
+      kmls.push(dist/sorted[i].liters);
+    }
+  }
+  const last5 = kmls.slice(-5);
+  const avgKml = last5.length ? (last5.reduce((a,b)=>a+b,0)/last5.length) : null;
+  const now = new Date();
+  const monthSpend = state.fuel.filter(f=>{
+    const d = new Date(f.date);
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).reduce((a,f)=>a+Number(f.total||0),0);
+  return {avgKml, monthSpend};
+}
+
+function maintenanceStatus(item){
+  const kmSince = currentOdo() - item.lastOdo;
+  const remaining = item.intervalKm - kmSince;
+  let status = 'ok';
+  if(remaining<=0) status='overdue';
+  else if(remaining<=300) status='soon';
+  return {remaining, status};
+}
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function tryGeolocation(){
+  geoState.status='loading';
+  render();
+  if(!navigator.geolocation){
+    geoState.status='unavailable';
+    render();
+    return;
+  }
+  const timeout = setTimeout(()=>{
+    if(geoState.status==='loading'){ geoState.status='unavailable'; render(); }
+  }, 6000);
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      clearTimeout(timeout);
+      geoState = {status:'ok', lat:pos.coords.latitude, lng:pos.coords.longitude};
+      render();
+    },
+    err=>{
+      clearTimeout(timeout);
+      geoState.status = err.code===1 ? 'denied' : 'unavailable';
+      render();
+    },
+    {timeout:5500, maximumAge:60000}
+  );
+}
+
+function switchTab(id){ activeTab=id; render(); }
+
+function openOverlay(html){
+  document.getElementById('overlayRoot').innerHTML = html;
+}
+function closeOverlay(){
+  document.getElementById('overlayRoot').innerHTML = '';
+}
+
+/* ---------- SETTINGS SHEET ---------- */
+function openSettings(){
+  openOverlay(`
+    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
+      <div class="form-sheet">
+        <h3>${t('settings')}</h3>
+        <div class="field">
+          <label>${t('language')}</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${state.settings.language==='en'?'active':''}" onclick="setLanguage('en')">EN</button>
+            <button class="toggle-btn ${state.settings.language==='fil'?'active':''}" onclick="setLanguage('fil')">FIL</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>${t('currency')}</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${state.settings.currency==='₱'?'active':''}" onclick="setCurrency('₱')">₱ PHP</button>
+            <button class="toggle-btn ${state.settings.currency==='$'?'active':''}" onclick="setCurrency('$')">$ USD</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>${t('theme')}</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${state.settings.theme==='dark'?'active':''}" onclick="setTheme('dark')">${t('dark')}</button>
+            <button class="toggle-btn ${state.settings.theme==='light'?'active':''}" onclick="setTheme('light')">${t('light')}</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="closeOverlay()">${t('close')}</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+/* ---------- RENDER: DASHBOARD ---------- */
+function renderHome(){
+  const {avgKml, monthSpend} = computeFuelStats();
+  const withStatus = state.maintenance.map(m=>({...m, ...maintenanceStatus(m)}));
+  withStatus.sort((a,b)=>a.remaining-b.remaining);
+  const top3 = withStatus.slice(0,3);
+
+  return `
+    <div class="hero">
+      <div class="num">${currentOdo().toLocaleString('en-PH')}</div>
+      <div class="label">${t('odo_label')} (km)</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card teal">
+        <div class="v">${avgKml? avgKml.toFixed(1) : '—'}</div>
+        <div class="l">${t('avg_kml')}</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="v">${fmtMoney(monthSpend)}</div>
+        <div class="l">${t('month_spend')}</div>
+      </div>
+    </div>
+    <div class="section-title">${t('upcoming_pms')}</div>
+    ${top3.map(m=>pmsItemHtml(m)).join('') || `<div class="empty-state"><div class="msg">${t('no_pms')}</div></div>`}
+  `;
+}
+
+/* ---------- RENDER: FUEL ---------- */
+function renderFuel(){
+  const sorted = [...state.fuel].sort((a,b)=> new Date(b.date)-new Date(a.date) || b.odometer-a.odometer);
+  const bySortedOdo = [...state.fuel].sort((a,b)=>a.odometer-b.odometer);
+
+  const cards = sorted.map(entry=>{
+    const idx = bySortedOdo.findIndex(e=>e.id===entry.id);
+    let kmlBadge = '';
+    if(idx>0){
+      const dist = bySortedOdo[idx].odometer - bySortedOdo[idx-1].odometer;
+      if(dist>0 && entry.liters>0){
+        kmlBadge = `<div class="kml-badge">${(dist/entry.liters).toFixed(1)} km/L</div>`;
+      }
+    }
+    return `
+    <div class="list-card">
+      <div class="top-row">
+        <div class="title">${entry.station || 'Gas station'}</div>
+        <div class="amount">${fmtMoney(entry.total)}</div>
+      </div>
+      <div class="meta">
+        <span>${entry.date}</span>
+        <span>${fmtKm(entry.odometer)}</span>
+        <span>${entry.liters}L @ ${fmtMoney(entry.pricePerLiter)}/L</span>
+        ${entry.lat ? `<span>📍 ${t('tagged')}</span>` : ''}
+      </div>
+      ${kmlBadge}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="section-title">${t('fuel_log')} <button class="btn-add" onclick="openFuelForm()">${t('add')}</button></div>
+    ${cards || `<div class="empty-state"><div class="big">⛽</div><div class="msg">${t('no_fuel')}</div></div>`}
+  `;
+}
+
+/* ---------- RENDER: TRIPS ---------- */
+function renderTrips(){
+  const sorted = [...state.trips].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const cards = sorted.map(tr=>`
+    <div class="list-card">
+      <div class="top-row">
+        <div class="title">${tr.purpose}</div>
+        <div class="amount" style="color:var(--teal)">${fmtKm(tr.distance)}</div>
+      </div>
+      <div class="meta">
+        <span>${tr.date}</span>
+        <span>${fmtKm(tr.startOdo)} → ${fmtKm(tr.endOdo)}</span>
+      </div>
+      ${tr.note ? `<div class="meta" style="margin-top:6px">${tr.note}</div>` : ''}
+    </div>
+  `).join('');
+
+  return `
+    <div class="section-title">${t('trip_log')} <button class="btn-add" onclick="openTripForm()">${t('add')}</button></div>
+    ${cards || `<div class="empty-state"><div class="big">🛣️</div><div class="msg">${t('no_trips')}</div></div>`}
+  `;
+}
+
+/* ---------- RENDER: PMS ---------- */
+function pmsItemHtml(m){
+  const {remaining,status} = m.remaining!==undefined ? m : {...m, ...maintenanceStatus(m)};
+  const statusLabel = status==='overdue' ? t('status_overdue', Math.abs(remaining)) : status==='soon' ? t('status_soon', remaining) : t('status_ok', remaining);
+  return `
+    <div class="pms-item ${status}">
+      <div>
+        <div class="name">${m.name}</div>
+        <div class="sub">${t('every')} ${fmtKm(m.intervalKm)} • ${t('last_done_at')} ${fmtKm(m.lastOdo)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="pms-status ${status}">${statusLabel}</div>
+        <button class="done-btn" onclick="markDone('${m.id}')">${t('done')}</button>
+      </div>
+    </div>
+  `;
+}
+function renderPms(){
+  const withStatus = state.maintenance.map(m=>({...m, ...maintenanceStatus(m)}));
+  withStatus.sort((a,b)=>a.remaining-b.remaining);
+  return `
+    <div class="section-title">${t('maint_schedule')} <button class="btn-add" onclick="openMaintForm()">${t('add_item')}</button></div>
+    ${withStatus.map(pmsItemHtml).join('')}
+  `;
+}
+
+/* ---------- RENDER: NEARBY / FUEL WATCH ---------- */
+function renderNearby(){
+  const stationsMap = {};
+  [...state.fuel].sort((a,b)=> new Date(a.date)-new Date(b.date)).forEach(f=>{
+    if(!f.station) return;
+    stationsMap[f.station] = { name:f.station, price:f.pricePerLiter, date:f.date, lat:f.lat, lng:f.lng };
+  });
+  let stations = Object.values(stationsMap);
+
+  let banner = '';
+  if(geoState.status==='idle'){
+    tryGeolocation();
+    banner = `<div class="location-banner"><span>${t('getting_location')}</span></div>`;
+  } else if(geoState.status==='loading'){
+    banner = `<div class="location-banner"><span>${t('getting_location')}</span></div>`;
+  } else if(geoState.status==='ok'){
+    stations = stations.map(s=> s.lat? {...s, dist: haversine(geoState.lat, geoState.lng, s.lat, s.lng)} : s);
+    stations.sort((a,b)=>{
+      if(a.dist===undefined && b.dist===undefined) return new Date(b.date)-new Date(a.date);
+      if(a.dist===undefined) return 1;
+      if(b.dist===undefined) return -1;
+      return a.dist-b.dist;
+    });
+    banner = `<div class="location-banner"><span>${t('sorted_by_distance')}</span></div>`;
+  } else {
+    stations.sort((a,b)=> new Date(b.date)-new Date(a.date));
+    const msg = geoState.status==='denied' ? t('location_denied') : t('location_unavailable');
+    banner = `<div class="location-banner"><span>${msg}</span><button class="retry" onclick="tryGeolocation()">${t('retry')}</button></div>`;
+  }
+
+  const cards = stations.map(s=>`
+    <div class="list-card station-card">
+      <div class="top-row">
+        <div class="title">${s.name}</div>
+        ${s.dist!==undefined ? `<div class="dist">${s.dist.toFixed(1)} km</div>` : ''}
+      </div>
+      <div class="meta">
+        <span>${t('last_price')} ${fmtMoney(s.price)}/L</span>
+        <span>${t('last_visit')} ${s.date}</span>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="section-title">${t('fuel_watch')}</div>
+    ${banner}
+    ${cards || `<div class="empty-state"><div class="big">📍</div><div class="msg">${t('no_stations')}</div></div>`}
+  `;
+}
+
+/* ---------- FORMS ---------- */
+function openFuelForm(){
+  openOverlay(`
+    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
+      <div class="form-sheet">
+        <h3>${t('add_fuel_title')}</h3>
+        <div class="geo-btn" id="geoTagBtn" onclick="geoTagStation()">${t('tag_location_btn')}</div>
+        <div class="field"><label>${t('date')}</label><input id="f_date" type="date" value="${todayStr()}"></div>
+        <div class="field"><label>${t('station_name')}</label><input id="f_station" type="text" placeholder="${t('station_placeholder')}"></div>
+        <div class="field"><label>${t('odo_now')}</label><input id="f_odo" type="number" value="${currentOdo()||''}"></div>
+        <div class="field-row">
+          <div class="field"><label>${t('liters')}</label><input id="f_liters" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label>${t('price_per_liter')}</label><input id="f_price" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeOverlay()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveFuelForm()">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+let pendingGeo = null;
+function geoTagStation(){
+  const btn = document.getElementById('geoTagBtn');
+  btn.textContent = t('geo_getting');
+  if(!navigator.geolocation){ btn.textContent=t('geo_none'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ pendingGeo = {lat:pos.coords.latitude, lng:pos.coords.longitude}; btn.textContent=t('geo_tagged'); },
+    err=>{ pendingGeo=null; btn.textContent=t('geo_unavailable'); },
+    {timeout:5500}
+  );
+}
+async function saveFuelForm(){
+  const date = document.getElementById('f_date').value || todayStr();
+  const station = document.getElementById('f_station').value || 'Gas station';
+  const odo = Number(document.getElementById('f_odo').value)||0;
+  const liters = Number(document.getElementById('f_liters').value)||0;
+  const price = Number(document.getElementById('f_price').value)||0;
+  const entry = { id:uid(), date, station, odometer:odo, liters, pricePerLiter:price, total: liters*price, lat: pendingGeo?.lat, lng: pendingGeo?.lng };
+  state.fuel.push(entry);
+  if(odo > currentOdo()) state.settings.odometer = odo;
+  pendingGeo = null;
+  await saveData();
+  closeOverlay();
+  render();
+}
+
+function openTripForm(){
+  openOverlay(`
+    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
+      <div class="form-sheet">
+        <h3>${t('add_trip_title')}</h3>
+        <div class="field"><label>${t('date')}</label><input id="t_date" type="date" value="${todayStr()}"></div>
+        <div class="field-row">
+          <div class="field"><label>${t('start_odo')}</label><input id="t_start" type="number" value="${currentOdo()||''}"></div>
+          <div class="field"><label>${t('end_odo')}</label><input id="t_end" type="number"></div>
+        </div>
+        <div class="field"><label>${t('purpose')}</label>
+          <select id="t_purpose">
+            <option>${t('purpose_work')}</option>
+            <option>${t('purpose_personal')}</option>
+            <option>${t('purpose_errand')}</option>
+            <option>${t('purpose_other')}</option>
+          </select>
+        </div>
+        <div class="field"><label>${t('note_optional')}</label><input id="t_note" type="text" placeholder="${t('note_placeholder')}"></div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeOverlay()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveTripForm()">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+async function saveTripForm(){
+  const date = document.getElementById('t_date').value || todayStr();
+  const start = Number(document.getElementById('t_start').value)||0;
+  const end = Number(document.getElementById('t_end').value)||0;
+  const purpose = document.getElementById('t_purpose').value;
+  const note = document.getElementById('t_note').value;
+  const distance = Math.max(0, end-start);
+  state.trips.push({ id:uid(), date, startOdo:start, endOdo:end, distance, purpose, note });
+  if(end > currentOdo()) state.settings.odometer = end;
+  await saveData();
+  closeOverlay();
+  render();
+}
+
+function openMaintForm(){
+  openOverlay(`
+    <div class="form-overlay" onclick="if(event.target===this) closeOverlay()">
+      <div class="form-sheet">
+        <h3>${t('add_maint_title')}</h3>
+        <div class="field"><label>${t('item_name')}</label><input id="m_name" type="text" placeholder="${t('item_name_placeholder')}"></div>
+        <div class="field"><label>${t('interval_km')}</label><input id="m_interval" type="number" placeholder="5000"></div>
+        <div class="field"><label>${t('last_done_odo')}</label><input id="m_last" type="number" value="${currentOdo()||0}"></div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeOverlay()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveMaintForm()">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+async function saveMaintForm(){
+  const name = document.getElementById('m_name').value || 'Maintenance item';
+  const interval = Number(document.getElementById('m_interval').value)||5000;
+  const last = Number(document.getElementById('m_last').value)||0;
+  state.maintenance.push({id:uid(), name, intervalKm:interval, lastOdo:last});
+  await saveData();
+  closeOverlay();
+  render();
+}
+async function markDone(id){
+  const item = state.maintenance.find(m=>m.id===id);
+  if(item){ item.lastOdo = currentOdo(); await saveData(); render(); }
+}
+
+/* ---------- MAIN RENDER ---------- */
+function render(){
+  document.getElementById('odoChip').textContent = fmtKm(currentOdo());
+
+  const main = document.getElementById('main');
+  if(activeTab==='home') main.innerHTML = renderHome();
+  else if(activeTab==='fuel') main.innerHTML = renderFuel();
+  else if(activeTab==='trips') main.innerHTML = renderTrips();
+  else if(activeTab==='pms') main.innerHTML = renderPms();
+  else if(activeTab==='nearby') main.innerHTML = renderNearby();
+
+  document.getElementById('tabbar').innerHTML = TABS.map(tb=>`
+    <button class="tab-btn ${activeTab===tb.id?'active':''}" onclick="switchTab('${tb.id}')">
+      ${ICONS[tb.icon]}
+      <span>${t(tb.key)}</span>
+    </button>
+  `).join('');
+}
+
+(async function init(){
+  state = await loadData();
+  applyTheme();
+  render();
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(e=>console.log('SW registration failed', e));
+  });
+}
+</script>
 </body>
 </html>
