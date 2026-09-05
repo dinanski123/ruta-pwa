@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v1';
+const CACHE_NAME = 'ruta-cache-v2-translations';
 const APP_SHELL = [
   './',
   './index.html',
