@@ -24,9 +24,9 @@
     }
   };
 
-  function c(k){ const lang = window.state?.settings?.language === 'en' ? 'en' : 'fil'; return copy[lang][k]; }
+  function c(k){ const lang = state?.settings?.language === 'en' ? 'en' : 'fil'; return copy[lang][k]; }
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-  function localSave(){ try { localStorage.setItem('ruta-vehicle-data', JSON.stringify(window.state)); } catch(e){} }
+  function localSave(){ try { localStorage.setItem('ruta-vehicle-data', JSON.stringify(state)); } catch(e){} }
 
   async function loadSupabase(){
     if(window.supabase) return window.supabase;
@@ -155,7 +155,7 @@
 
   async function init(){
     try{
-      while(!window.state) await new Promise(r=>setTimeout(r,30));
+      while(typeof state === 'undefined' || !state) await new Promise(r=>setTimeout(r,30));
       const lib=await loadSupabase();
       client=lib.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
       wrapFunctions();
