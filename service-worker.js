@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v9-password-toggle';
+const CACHE_NAME = 'ruta-cache-v10-tablet-responsive';
 const APP_SHELL = [
   './',
   './index.html',
