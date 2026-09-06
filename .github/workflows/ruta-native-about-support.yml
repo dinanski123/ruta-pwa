@@ -1,0 +1,40 @@
+name: One-time RUTA native About Support patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/ruta-native-about-support.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply native About and Support patch
+        run: python ruta-native-about-support-patch.py
+      - name: Validate cloud sync JavaScript
+        run: node --check cloud-sync.js
+      - name: Validate inline JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text()
+          scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
+          Path('/tmp/ruta-inline.js').write_text('\n'.join(scripts))
+          PY
+          node --check /tmp/ruta-inline.js
+      - name: Commit release and remove temporary patch files
+        run: |
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add cloud-sync.js index.html service-worker.js package.json .github/workflows/android-apk.yml
+          git rm -f ruta-native-about-support-patch.py .github/workflows/ruta-native-about-support.yml
+          git commit -m "Add native About and admin-managed Support"
+          git push
