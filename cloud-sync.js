@@ -629,8 +629,8 @@
     const pay=safeHttpUrl(row.payment_url);
     const hidden=isAdminUser()&&!row.is_active?` <span class="ruta-source">Hidden</span>`:'';
     const account=[row.account_name,row.account_identifier].filter(Boolean).map(esc).join(' • ');
-    const copyBtn=row.account_identifier?`<button class="done-btn" onclick='rutaCopySupportValue(${JSON.stringify(String(row.account_identifier))})'>${c('copy_value')}</button>`:'';
-    const payBtn=pay?`<button class="done-btn" onclick='rutaOpenPayment(${JSON.stringify(pay)})'>${c('open_payment')} ↗</button>`:'';
+    const copyBtn=row.account_identifier?`<button class="done-btn" data-copy="${esc(String(row.account_identifier))}" onclick="rutaCopySupportValue(this.dataset.copy)">${c('copy_value')}</button>`:'';
+    const payBtn=pay?`<button class="done-btn" data-url="${esc(pay)}" onclick="rutaOpenPayment(this.dataset.url)">${c('open_payment')} ↗</button>`:'';
     const admin=isAdminUser()?`<button class="done-btn" onclick="rutaOpenSupportForm('${row.id}')">${typeof t==='function'?t('edit'):'Edit'}</button><button class="done-btn ruta-danger" onclick="rutaRemoveSupportMethod('${row.id}')">${c('remove')}</button>`:'';
     return `<div class="ruta-support-method"><div class="ruta-support-title">${esc(row.provider)}${hidden}</div>${account?`<div class="ruta-support-value">${account}</div>`:''}${row.note?`<div class="ruta-support-note">${esc(row.note)}</div>`:''}<div class="ruta-support-actions">${copyBtn}${payBtn}${admin}</div></div>`;
   }
