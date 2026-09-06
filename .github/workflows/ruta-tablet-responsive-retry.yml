@@ -1,0 +1,46 @@
+name: One-time RUTA tablet responsive patch retry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ruta-tablet-responsive-retry.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fix patch marker
+        run: python .github/ruta-tablet-retry.py
+
+      - name: Apply tablet responsive patch
+        run: python .github/ruta-tablet-patch.py
+
+      - name: Validate inline JavaScript
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html','utf8');
+          const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]);
+          for (const code of scripts) new Function(code);
+          console.log(`Validated ${scripts.length} inline script block(s).`);
+          NODE
+          node --check cloud-sync.js
+
+      - name: Commit responsive release and remove temporary patch files
+        shell: bash
+        run: |
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add index.html service-worker.js
+          git rm -f .github/ruta-tablet-patch.py .github/ruta-tablet-retry.py .github/workflows/ruta-tablet-responsive.yml .github/workflows/ruta-tablet-responsive-retry.yml
+          git commit -m "Add responsive tablet and large-screen layout"
+          git push
