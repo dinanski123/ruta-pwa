@@ -140,3 +140,12 @@ if old_sw not in s:
 s = s.replace(old_sw, new_sw, 1)
 
 p.write_text(s)
+
+swp = Path('service-worker.js')
+sw = swp.read_text()
+old_cache = "const CACHE_NAME = 'ruta-cache-v9-password-toggle';"
+new_cache = "const CACHE_NAME = 'ruta-cache-v10-tablet-responsive';"
+if old_cache not in sw:
+    raise SystemExit('service worker cache marker not found')
+sw = sw.replace(old_cache, new_cache, 1)
+swp.write_text(sw)
