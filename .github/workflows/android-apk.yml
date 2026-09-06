@@ -1,4 +1,4 @@
-# Tablet responsive release build
+# Shared About release build
 name: Build Android APK
 
 on:
