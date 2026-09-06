@@ -1,4 +1,4 @@
-# Hardened cloud sync release build
+# Tablet responsive release build
 name: Build Android APK
 
 on:
