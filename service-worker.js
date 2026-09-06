@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v10-tablet-responsive';
+const CACHE_NAME = 'ruta-cache-v11-shared-about';
 const APP_SHELL = [
   './',
   './index.html',

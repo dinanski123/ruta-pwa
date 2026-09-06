@@ -4,6 +4,7 @@
   const FLEET_KEY = 'ruta-fleet-v2';
   const OUTBOX_KEY = 'ruta-sync-outbox-v1';
   const VPIC_BASE = 'https://vpic.nhtsa.dot.gov/api/vehicles';
+  const ABOUT_URL = 'https://daybook-ferdz.vercel.app/#about';
 
   let client = null;
   let user = null;
@@ -22,6 +23,7 @@
   const copy = {
     en: {
       cloud_title:'Cloud sync', cloud_desc:'Use the same account on Android and iPhone to keep RUTA data in sync.',
+      about_title:'About', about_desc:'RUTA and Daybook share one canonical About page so the profile, credits and contact details stay the same.', about_open:'Open About',
       email:'Email', password:'Password', show_password:'Show password', signin:'Sign in', signup:'Create account', signout:'Sign out', sync:'Sync now',
       connected:'Connected as', synced:'Synced', check:'Check your email to confirm your account, then sign in.',
       invalid:'Enter a valid email and a password with at least 6 characters.',
@@ -42,6 +44,7 @@
     },
     fil: {
       cloud_title:'Cloud sync', cloud_desc:'Gamitin ang parehong account sa Android at iPhone para mag-sync ang RUTA data.',
+      about_title:'About', about_desc:'Iisang canonical About page ang ginagamit ng RUTA at Daybook para pareho lagi ang profile, credits at contact details.', about_open:'Buksan ang About',
       email:'Email', password:'Password', show_password:'Ipakita ang password', signin:'Mag-sign in', signup:'Gumawa ng account', signout:'Mag-sign out', sync:'I-sync ngayon',
       connected:'Nakakonekta bilang', synced:'Naka-sync', check:'I-check ang email mo para kumpirmahin ang account, pagkatapos ay mag-sign in.',
       invalid:'Maglagay ng valid na email at password na may hindi bababa sa 6 na character.',
@@ -483,7 +486,7 @@
   }
 
   function injectPanels(){
-    fleetPanel(); cloudPanel();
+    fleetPanel(); cloudPanel(); aboutPanel();
   }
 
   function settingsActions(sheet){
@@ -518,6 +521,20 @@
     }
     if(actions)sheet.insertBefore(box,actions); else sheet.appendChild(box);
   }
+
+  function aboutPanel(){
+    const sheet=document.querySelector('#overlayRoot .form-sheet');
+    if(!sheet||sheet.querySelector('#rutaAboutPanel'))return;
+    const actions=settingsActions(sheet);
+    const box=document.createElement('div'); box.id='rutaAboutPanel'; box.className='field';
+    box.innerHTML=`<label>${c('about_title')}</label><div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">${c('about_desc')}</div><button class="geo-btn" style="margin-bottom:0" onclick="rutaOpenAbout()">${c('about_open')} ↗</button>`;
+    if(actions)sheet.insertBefore(box,actions); else sheet.appendChild(box);
+  }
+
+  window.rutaOpenAbout=()=>{
+    const opened=window.open(ABOUT_URL,'_blank','noopener,noreferrer');
+    if(!opened) window.location.href=ABOUT_URL;
+  };
 
   function panelRefresh(){ if(window.openSettings) openSettings(); setTimeout(injectPanels,0); }
   function creds(){return {email:(document.getElementById('ruta_sync_email')?.value||'').trim(),password:document.getElementById('ruta_sync_password')?.value||''};}
