@@ -1,4 +1,4 @@
-# Shared About release build
+# Native About and Support APK release
 name: Build Android APK
 
 on:
@@ -80,7 +80,7 @@ jobs:
       - name: Configure Android wrapper
         env:
           RUTA_VERSION_CODE: ${{ github.run_number }}
-          RUTA_VERSION_NAME: 1.0.${{ github.run_number }}
+          RUTA_VERSION_NAME: 1.2.0
         run: node scripts/configure-android.mjs
 
       - name: Generate RUTA Android icons and splash assets
