@@ -1,0 +1,38 @@
+name: One-time RUTA shared About patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ruta-about.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply shared About patch
+        run: python .github/ruta-about-patch.py
+      - name: Validate JavaScript
+        run: |
+          node --check cloud-sync.js
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          s=Path('index.html').read_text()
+          blocks=re.findall(r'<script>(.*?)</script>',s,re.S)
+          code='\n'.join(blocks)
+          Path('/tmp/ruta-inline.js').write_text(code)
+          subprocess.run(['node','--check','/tmp/ruta-inline.js'],check=True)
+          PY
+      - name: Commit About release and remove temporary patch files
+        run: |
+          rm -f .github/ruta-about-patch.py .github/workflows/ruta-about.yml
+          git config user.name "ferdz.degracia"
+          git config user.email "ferdz.degracia@gmail.com"
+          git add cloud-sync.js index.html service-worker.js .github/ruta-about-patch.py .github/workflows/ruta-about.yml
+          git commit -m "Add shared About section linked to Daybook"
+          git push
