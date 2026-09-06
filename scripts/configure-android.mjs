@@ -16,11 +16,15 @@ for (const permission of permissions) {
   }
 }
 
+// Tablets, foldables and desktop-style Android modes should be free to rotate and resize.
+manifest = manifest.replace(/\s+android:screenOrientation="[^"]*"/g, '');
 manifest = manifest.replace(
   /<activity\b([^>]*android:name="\.MainActivity"[^>]*)>/,
-  (match, attrs) => attrs.includes('android:screenOrientation=')
-    ? match
-    : `<activity${attrs} android:screenOrientation="portrait">`
+  (match, attrs) => {
+    let next = attrs;
+    if (!next.includes('android:resizeableActivity=')) next += ' android:resizeableActivity="true"';
+    return `<activity${next}>`;
+  }
 );
 
 await writeFile(manifestPath, manifest);
@@ -34,4 +38,4 @@ gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
 gradle = gradle.replace(/versionName\s+"[^"]*"/, `versionName "${versionName}"`);
 await writeFile(gradlePath, gradle);
 
-console.log(`Configured Android permissions, portrait mode, versionCode ${versionCode}, versionName ${versionName}.`);
+console.log(`Configured Android permissions, adaptive orientation/multi-window support, versionCode ${versionCode}, versionName ${versionName}.`);
