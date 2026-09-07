@@ -2,10 +2,14 @@
 name: Build Android APK
 
 on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -82,13 +86,21 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk RUTA-android-debug.apk
+      - name: Prepare latest APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk RUTA-latest.apk
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: RUTA-android-debug-apk
-          path: RUTA-android-debug.apk
-          if-no-files-found: error
-          retention-days: 30
+      - name: Publish APK to stable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view ruta-latest >/dev/null 2>&1; then
+            gh release upload ruta-latest RUTA-latest.apk --clobber
+            gh release edit ruta-latest \
+              --title "RUTA - Latest Android APK" \
+              --notes "Latest debug APK built from the current RUTA main branch. Commit: $GITHUB_SHA"
+          else
+            gh release create ruta-latest RUTA-latest.apk \
+              --target "$GITHUB_SHA" \
+              --title "RUTA - Latest Android APK" \
+              --notes "Latest debug APK built from the current RUTA main branch. Commit: $GITHUB_SHA"
+          fi
