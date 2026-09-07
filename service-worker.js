@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruta-cache-v13-fuel-sync-repair';
+const CACHE_NAME = 'ruta-cache-v14-unresponsive-sync-fix';
 const APP_SHELL = [
   './',
   './index.html',
@@ -37,6 +37,8 @@ async function networkFirst(request, fallback) {
   }
 }
 
+// index.html still loads cloud-sync.js. Append only the small fuel UI repair
+// so the existing cloud-sync.js engine remains the single reconciliation engine.
 async function combinedCloudSync(request) {
   const patchUrl = new URL('./ruta-v13-fixes.js', self.location.href).href;
   const patchRequest = new Request(patchUrl, {cache:'no-store'});
@@ -50,7 +52,7 @@ async function combinedCloudSync(request) {
   const headers = new Headers(baseResponse.headers);
   headers.set('content-type','application/javascript; charset=utf-8');
   headers.set('cache-control','no-store');
-  return new Response(`${base}\n\n/* RUTA v1.3 runtime repairs */\n${patch}`, {status:200, headers});
+  return new Response(`${base}\n\n/* RUTA v1.3.1 fuel UI repair */\n${patch}`, {status:200, headers});
 }
 
 self.addEventListener('fetch', (event) => {
