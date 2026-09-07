@@ -21,9 +21,9 @@ manifest = manifest.replace(/<activity\b([^>]*android:name="\.MainActivity"[^>]*
 await writeFile(manifestPath, manifest);
 
 let gradle = await readFile(gradlePath, 'utf8');
-const requestedCode = Number.parseInt(process.env.RUTA_VERSION_CODE || '130', 10);
-const versionCode = Number.isFinite(requestedCode) && requestedCode > 0 ? requestedCode : 130;
-const versionName = process.env.RUTA_VERSION_NAME || '1.3.0';
+const requestedCode = Number.parseInt(process.env.RUTA_VERSION_CODE || '131', 10);
+const versionCode = Number.isFinite(requestedCode) && requestedCode > 0 ? requestedCode : 131;
+const versionName = process.env.RUTA_VERSION_NAME || '1.3.1';
 gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
 gradle = gradle.replace(/versionName\s+"[^"]*"/, `versionName "${versionName}"`);
 await writeFile(gradlePath, gradle);
