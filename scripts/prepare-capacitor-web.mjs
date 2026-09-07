@@ -7,7 +7,7 @@ const out = resolve(root, 'www');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-const files = ['cloud-sync.js', 'manifest.json', 'service-worker.js'];
+const files = ['cloud-sync.js', 'ruta-v13-fixes.js', 'manifest.json', 'service-worker.js'];
 for (const file of files) {
   await cp(resolve(root, file), resolve(out, file));
 }
@@ -17,6 +17,10 @@ let html = await readFile(resolve(root, 'index.html'), 'utf8');
 html = html.replace(
   "if('serviceWorker' in navigator){",
   "if('serviceWorker' in navigator && !window.Capacitor?.isNativePlatform?.()){"
+);
+html = html.replace(
+  '<script src="cloud-sync.js"></script>',
+  '<script src="cloud-sync.js"></script>\n<script src="ruta-v13-fixes.js"></script>'
 );
 await writeFile(resolve(out, 'index.html'), html, 'utf8');
 
