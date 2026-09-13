@@ -1,13 +1,13 @@
 {
   "name": "RUTA — Fuel & Maintenance Tracker",
   "short_name": "RUTA",
-  "description": "Sundan ang bawat kilometro — fuel log, trip tracker, maintenance schedule, at fuel watch.",
+  "description": "Track fuel expenses, fuel consumption, odometer and maintenance reminders.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#101312",
-  "theme_color": "#101312",
+  "background_color": "#EDEEE9",
+  "theme_color": "#EDEEE9",
   "icons": [
     {
       "src": "icons/icon-192.png",

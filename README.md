@@ -1,68 +1,49 @@
-# RUTA — Fuel & Maintenance Tracker (PWA)
+# RUTA — Fuel & Maintenance Tracker
 
-## Ano ang laman ng folder na ito
-- `index.html` — ang buong app (UI + logic), gumagamit ng `localStorage` para sa data
-- `manifest.json` — PWA config (pangalan, icons, kulay)
-- `service-worker.js` — nagpapagana ng offline access
-- `icons/` — app icons (192, 512, maskable, apple touch icon, favicon)
+RUTA is a local-first PWA and Capacitor Android app focused on three jobs: tracking fuel expenses, understanding fuel consumption, and staying ahead of maintenance.
 
-Data ng bawat user ay naka-store lang sa sarili niyang device/browser (`localStorage`) — walang backend o database, kaya walang gastos sa hosting.
+## RUTA v1.4.0
 
----
+The main app has three tabs only:
 
-## Paraan 1: iOS — gawing PWA (pinakamadali)
+- **Home** — current odometer, average km/L, fuel spending this month, and the next maintenance reminder.
+- **Fuel** — simple fill-up logging using current odometer, price per liter, and total purchase. RUTA calculates liters automatically and summarizes monthly spend, liters, and average price per liter.
+- **Maintenance** — service intervals, due odometer, kilometers remaining, and due/overdue reminders.
 
-1. I-upload ang buong folder (`index.html`, `manifest.json`, `service-worker.js`, `icons/`) sa isang static host:
-   - **Netlify** (drag-and-drop sa app.netlify.com/drop — pinakamabilis)
-   - **Vercel** (`vercel deploy`)
-   - **GitHub Pages**
-2. Buksan ang deployed URL gamit ang **Safari** sa iPhone (kailangan Safari, hindi Chrome, para gumana ang "Add to Home Screen").
-3. Tap **Share** → **Add to Home Screen**.
-4. Lalabas ang RUTA icon sa home screen mo, gagana na parang native app (full screen, may sariling icon, may offline support).
+RUTA is English-only. Light mode is the default; dark mode remains optional in Settings. Fuel Watch/Nearby and location collection were removed in v1.4.0, so the Android app no longer requests location permission. Historical station/location values already stored in the database remain intact but are not used by the app.
 
-> Note: Sa iOS, ang geolocation (Fuel Watch feature) ay gagana lang kapag naka-HTTPS ang site mo (automatic ito sa Netlify/Vercel/GitHub Pages) at pumayag ka sa location permission prompt.
+## Build source
 
----
+The deployable `index.html` and `cloud-sync.js` are reconstructed by `npm run build:web` from the compressed source chunks in `src-bundle/`. This keeps the PWA and Capacitor Android build on the exact same static runtime without service-worker code injection or a second sync engine. The generated files are written to `www/`.
 
-## Paraan 2: Android — gawing installable app gamit ang Capacitor
+## Data and cloud sync
 
-Ito ang pinakamadaling paraan para magkaroon ng totoong Android app (APK/AAB) mula sa parehong HTML files, hindi mo kailangan i-rewrite sa Kotlin/Java.
+RUTA remains usable offline using local storage. Optional Cloud Sync uses the dedicated RUTA Supabase project so the same account can carry vehicle, fuel, and maintenance records between devices. The client uses one authenticated Supabase session, one persistent outbox, and one reconciliation engine.
+
+Existing cloud data is protected by row-level security. Fuel and maintenance deletions are soft-deleted in the cloud to avoid stale-device resurrection.
+
+## PWA
+
+Vercel runs `npm run build:web` and serves the `www/` output. On iPhone, open the production URL in Safari and use **Share → Add to Home Screen**.
+
+The service worker uses network-first behavior for HTML and JavaScript so updates are less likely to remain stuck behind an old cached runtime.
+
+## Android Studio
+
+Package ID: `app.ruta.tracker`
+
+Requirements: Node.js 22+, Java 21, Android Studio.
 
 ```bash
-# 1. Sa isang bagong folder, i-install ang Node.js tools
-npm init -y
-npm install @capacitor/core @capacitor/android
-npm install -D @capacitor/cli
-
-# 2. I-initialize ang Capacitor project
-npx cap init "RUTA" "com.yourname.ruta" --web-dir=www
-
-# 3. Kopyahin ang index.html, manifest.json, service-worker.js, at icons/
-#    papunta sa isang "www" folder sa loob ng project na ito
-
-# 4. Idagdag ang Android platform
-npx cap add android
-
-# 5. I-sync ang web assets papunta sa Android project
-npx cap sync
-
-# 6. Buksan sa Android Studio para i-build/i-test ang APK
+npm install
+npm run android:init
 npx cap open android
 ```
 
-Sa Android Studio, pwede mo nang i-run ang app sa emulator o physical device, o i-build ang signed APK/AAB para i-publish sa Google Play.
+For an existing generated `android/` directory, use `npm run android:sync` instead of `android:init`.
 
-**Tip:** Palitan ang `com.yourname.ruta` ng sarili mong package name (dapat unique, hal. `com.juandelacruz.ruta`) bago mag-publish sa Play Store.
+The Android pipeline preserves adaptive icons, resizable activity / tablet support, portrait and landscape operation, and does not request location permission.
 
----
+## GitHub Actions
 
-## Paano baguhin ang icon o kulay
-
-- Icons: palitan lang ang mga PNG files sa `icons/` (panatilihin ang parehong filenames at sizes: 192x192, 512x512).
-- Theme color: baguhin ang `theme_color` at `background_color` sa `manifest.json`, at ang `<meta name="theme-color">` sa `index.html`.
-
----
-
-## Limitasyon ng Fuel Watch feature
-
-Ang "Malapit" tab ay based sa mga gas station na na-log mo mismo (lokasyon + presyo mula sa iyong sariling fuel entries) — hindi ito kumukuha ng live prices mula sa ibang users o sa internet. Habang mas madami kang naka-log na fill-ups sa iba't ibang estasyon, mas magiging useful ang comparison na ito.
+The APK workflow is **manual-only** (`workflow_dispatch`). It can be run from a fork or another GitHub account with available Actions minutes. Normal source pushes do not automatically consume APK-build minutes.

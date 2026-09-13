@@ -5,13 +5,7 @@ const manifestPath = fileURLToPath(new URL('../android/app/src/main/AndroidManif
 const gradlePath = fileURLToPath(new URL('../android/app/build.gradle', import.meta.url));
 
 let manifest = await readFile(manifestPath, 'utf8');
-const permissions = [
-  '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
-  '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
-];
-for (const permission of permissions) {
-  if (!manifest.includes(permission)) manifest = manifest.replace(/<manifest\b[^>]*>/, match => `${match}\n    ${permission}`);
-}
+manifest = manifest.replace(/\s*<uses-permission android:name="android\.permission\.ACCESS_(?:COARSE|FINE)_LOCATION" \/>\s*/g, '\n');
 manifest = manifest.replace(/\s+android:screenOrientation="[^"]*"/g, '');
 manifest = manifest.replace(/<activity\b([^>]*android:name="\.MainActivity"[^>]*)>/, (match, attrs) => {
   let next = attrs;
@@ -21,11 +15,11 @@ manifest = manifest.replace(/<activity\b([^>]*android:name="\.MainActivity"[^>]*
 await writeFile(manifestPath, manifest);
 
 let gradle = await readFile(gradlePath, 'utf8');
-const requestedCode = Number.parseInt(process.env.RUTA_VERSION_CODE || '132', 10);
-const versionCode = Number.isFinite(requestedCode) && requestedCode > 0 ? requestedCode : 132;
-const versionName = process.env.RUTA_VERSION_NAME || '1.3.2';
+const requestedCode = Number.parseInt(process.env.RUTA_VERSION_CODE || '140', 10);
+const versionCode = Number.isFinite(requestedCode) && requestedCode > 0 ? requestedCode : 140;
+const versionName = process.env.RUTA_VERSION_NAME || '1.4.0';
 gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
 gradle = gradle.replace(/versionName\s+"[^"]*"/, `versionName "${versionName}"`);
 await writeFile(gradlePath, gradle);
 
-console.log(`Configured Android permissions, adaptive orientation/multi-window support, versionCode ${versionCode}, versionName ${versionName}.`);
+console.log(`Configured Android without location permissions, adaptive orientation/multi-window support, versionCode ${versionCode}, versionName ${versionName}.`);

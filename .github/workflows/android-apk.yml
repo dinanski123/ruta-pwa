@@ -1,4 +1,4 @@
-# Manual Android APK build only — source updates no longer consume GitHub Actions minutes
+# Manual APK build only — source pushes do not consume Actions minutes.
 name: Build Android APK
 
 on:
@@ -11,28 +11,23 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Restore Android debug signing key
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
           key: ruta-android-debug-keystore-v1
-
       - name: Ensure stable debug signing key
         shell: bash
         run: |
@@ -48,58 +43,40 @@ jobs:
               -keysize 2048 \
               -validity 10000
           fi
-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
-      - name: Validate RUTA JavaScript
-        run: |
-          node --check cloud-sync.js
-          node --check ruta-v132-unified.js
-          node --check service-worker.js
-          node --check scripts/prepare-capacitor-web.mjs
-
-      - name: Prepare current RUTA web app
+      - name: Prepare and validate RUTA v1.4.0
         run: |
           npm run build:web
           node --check www/cloud-sync.js
-
+          node --check www/service-worker.js
+          node --check scripts/prepare-capacitor-web.mjs
+          node --check scripts/configure-android.mjs
       - name: Add Android platform
         run: npx cap add android
-
       - name: Sync Android platform
         run: npx cap sync android
-
       - name: Configure Android wrapper
         env:
           RUTA_VERSION_CODE: ${{ github.run_number }}
-          RUTA_VERSION_NAME: 1.3.2
+          RUTA_VERSION_NAME: 1.4.0
         run: node scripts/configure-android.mjs
-
       - name: Generate RUTA Android icons and splash assets
         run: npm run android:assets
-
       - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-
       - name: Prepare latest APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk RUTA-latest.apk
-
       - name: Publish APK to stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view ruta-latest >/dev/null 2>&1; then
             gh release upload ruta-latest RUTA-latest.apk --clobber
-            gh release edit ruta-latest \
-              --title "RUTA - Latest Android APK" \
-              --notes "Latest debug APK built from the current RUTA main branch. Commit: $GITHUB_SHA"
+            gh release edit ruta-latest --title "RUTA - Latest Android APK" --notes "RUTA v1.4.0 APK. Commit: $GITHUB_SHA"
           else
-            gh release create ruta-latest RUTA-latest.apk \
-              --target "$GITHUB_SHA" \
-              --title "RUTA - Latest Android APK" \
-              --notes "Latest debug APK built from the current RUTA main branch. Commit: $GITHUB_SHA"
+            gh release create ruta-latest RUTA-latest.apk --target "$GITHUB_SHA" --title "RUTA - Latest Android APK" --notes "RUTA v1.4.0 APK. Commit: $GITHUB_SHA"
           fi
