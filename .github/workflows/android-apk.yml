@@ -1,7 +1,9 @@
-# Manual APK build only — source pushes do not consume Actions minutes.
+# One-time v1.4.0 release APK build. This push trigger will be removed after the release is updated.
 name: Build Android APK
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -58,7 +60,7 @@ jobs:
         run: npx cap sync android
       - name: Configure Android wrapper
         env:
-          RUTA_VERSION_CODE: ${{ github.run_number }}
+          RUTA_VERSION_CODE: 140
           RUTA_VERSION_NAME: 1.4.0
         run: node scripts/configure-android.mjs
       - name: Generate RUTA Android icons and splash assets
