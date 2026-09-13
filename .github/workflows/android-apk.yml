@@ -1,9 +1,7 @@
-# One-time v1.4.0 release APK build. This push trigger will be removed after the release is updated.
+# Manual APK build only — source pushes do not consume Actions minutes.
 name: Build Android APK
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
