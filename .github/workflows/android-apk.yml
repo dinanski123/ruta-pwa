@@ -55,11 +55,14 @@ jobs:
       - name: Validate RUTA JavaScript
         run: |
           node --check cloud-sync.js
-          node --check ruta-v13-fixes.js
+          node --check ruta-v132-unified.js
           node --check service-worker.js
+          node --check scripts/prepare-capacitor-web.mjs
 
       - name: Prepare current RUTA web app
-        run: npm run build:web
+        run: |
+          npm run build:web
+          node --check www/cloud-sync.js
 
       - name: Add Android platform
         run: npx cap add android
@@ -70,7 +73,7 @@ jobs:
       - name: Configure Android wrapper
         env:
           RUTA_VERSION_CODE: ${{ github.run_number }}
-          RUTA_VERSION_NAME: 1.3.1
+          RUTA_VERSION_NAME: 1.3.2
         run: node scripts/configure-android.mjs
 
       - name: Generate RUTA Android icons and splash assets

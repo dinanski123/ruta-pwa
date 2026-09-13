@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ruta-cache-v14-unresponsive-sync-fix';
+const CACHE_NAME = 'ruta-cache-v15-unified-sync';
 const APP_SHELL = [
   './',
   './index.html',
   './cloud-sync.js',
-  './ruta-v13-fixes.js',
+  './ruta-v132-unified.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -12,55 +12,53 @@ const APP_SHELL = [
   './icons/favicon.png',
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
 async function networkFirst(request, fallback) {
   try {
     const response = await fetch(request, {cache:'no-store'});
-    if (response && response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
+    if (!response || !response.ok) throw new Error(`HTTP ${response?.status || 0}`);
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(request, response.clone());
     return response;
   } catch (error) {
     return (await caches.match(request)) || (fallback ? await caches.match(fallback) : undefined);
   }
 }
 
-// index.html still loads cloud-sync.js. Append only the small fuel UI repair
-// so the existing cloud-sync.js engine remains the single reconciliation engine.
-async function combinedCloudSync(request) {
-  const patchUrl = new URL('./ruta-v13-fixes.js', self.location.href).href;
-  const patchRequest = new Request(patchUrl, {cache:'no-store'});
+async function unifiedCloudSync(request) {
+  const patchUrl = new URL('./ruta-v132-unified.js', self.location.href).href;
   const [baseResponse, patchResponse] = await Promise.all([
     networkFirst(request),
-    networkFirst(patchRequest)
+    networkFirst(new Request(patchUrl, {cache:'no-store'}))
   ]);
-  if (!baseResponse) throw new Error('RUTA cloud sync is unavailable offline');
-  const base = await baseResponse.clone().text();
-  const patch = patchResponse ? await patchResponse.clone().text() : '';
+  if (!baseResponse || !patchResponse) throw new Error('RUTA unified sync bundle is unavailable offline');
+  let base = await baseResponse.clone().text();
+  const patch = await patchResponse.clone().text();
+  base = base.replace("const RUTA_VERSION = '1.2.0';", "const RUTA_VERSION = '1.3.2';");
+  const marker = '  init();\n})();';
+  if (!base.includes(marker)) throw new Error('RUTA cloud sync bundle marker was not found');
+  const merged = base.replace(marker, `${patch}\n\n  init();\n})();`);
   const headers = new Headers(baseResponse.headers);
   headers.set('content-type','application/javascript; charset=utf-8');
   headers.set('cache-control','no-store');
-  return new Response(`${base}\n\n/* RUTA v1.3.1 fuel UI repair */\n${patch}`, {status:200, headers});
+  return new Response(merged, {status:200, headers});
 }
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
   if (url.origin === self.location.origin && url.pathname.endsWith('/cloud-sync.js')) {
-    event.respondWith(combinedCloudSync(event.request).catch(() => caches.match(event.request)));
+    event.respondWith(unifiedCloudSync(event.request));
     return;
   }
 
@@ -74,13 +72,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const refresh = fetch(event.request).then((response) => {
-        if (response && response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
-        return response;
-      }).catch(() => cached);
-      return cached || refresh;
-    })
-  );
+  event.respondWith(caches.match(event.request).then(cached => {
+    const refresh = fetch(event.request).then(response => {
+      if (response && response.ok) caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
+      return response;
+    }).catch(() => cached);
+    return cached || refresh;
+  }));
 });
