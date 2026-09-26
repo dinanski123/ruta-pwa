@@ -15,7 +15,7 @@
       #${ID} .ruta-status-ok{color:#218739;font-weight:700}
       #${ID} .ruta-status-actions{display:flex;gap:8px;margin-top:16px}
       #${ID} button{padding:9px 13px;border:0;border-radius:10px;font:inherit;cursor:pointer}
-      .ruta-system-status-trigger{margin-left:8px;width:52px;height:32px;padding:0 8px;border:1px solid #c9c9c2;border-radius:8px;background:#fff;color:#202422;font:inherit;font-size:15px;line-height:1;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+      .ruta-system-status-trigger{margin-left:8px;width:64px;height:32px;padding:0 6px;border:1px solid #c9c9c2;border-radius:8px;background:#fff;color:#202422;font:inherit;font-size:13px;line-height:1;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;box-shadow:0 1px 2px rgba(0,0,0,.04)}
       .ruta-system-status-trigger:active{opacity:.7}
     `;
     document.head.appendChild(style);
