@@ -15,6 +15,8 @@
       #${ID} .ruta-status-ok{color:#218739;font-weight:700}
       #${ID} .ruta-status-actions{display:flex;gap:8px;margin-top:16px}
       #${ID} button{padding:9px 13px;border:0;border-radius:10px;font:inherit;cursor:pointer}
+      .ruta-system-status-trigger{margin-left:8px;padding:10px 14px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font:inherit;font-weight:650;cursor:pointer;white-space:nowrap}
+      .ruta-system-status-trigger:active{opacity:.7}
     `;
     document.head.appendChild(style);
   }
@@ -72,12 +74,28 @@
     }
   }
 
-  document.addEventListener("click", event => {
-    const el = event.target?.closest?.("button,a,[role=button],input");
-    if (el && looksLikeSettings(el)) setTimeout(openPanel, 0);
-  }, true);
+  function installTrigger() {
+    if (document.querySelector("[data-ruta-status-trigger]")) return;
+    const candidates = [...document.querySelectorAll("button,a,[role=button],input")];
+    const settings = candidates.find(looksLikeSettings);
+    if (!settings || !settings.parentElement) return;
 
-  const observer = new MutationObserver(install);
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "ruta-system-status-trigger";
+    trigger.setAttribute("data-ruta-status-trigger", "true");
+    trigger.setAttribute("aria-label", "System Status");
+    trigger.textContent = "Status";
+    trigger.addEventListener("click", openPanel);
+
+    settings.insertAdjacentElement("afterend", trigger);
+  }
+
+  const observer = new MutationObserver(() => {
+    install();
+    installTrigger();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
   install();
+  installTrigger();
 })();
