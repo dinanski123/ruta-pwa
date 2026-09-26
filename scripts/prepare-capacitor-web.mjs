@@ -20,7 +20,7 @@ async function unpack(name) {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 const index = (await unpack('index.html')).toString('utf8');
-await writeFile(resolve(out, 'index.html'), index.replace('</body>', '<script src="/system-status.js?v=2" defer></script></body>'));
+await writeFile(resolve(out, 'index.html'), index.replace('</body>', '<script src="/system-status.js?v=3" defer></script></body>'));
 await writeFile(resolve(out, 'cloud-sync.js'), await unpack('cloud-sync.js'));
 for (const file of ['manifest.json', 'service-worker.js', 'system-status.js']) {
   await cp(resolve(root, file), resolve(out, file));
