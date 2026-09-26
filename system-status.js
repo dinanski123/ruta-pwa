@@ -15,7 +15,7 @@
       #${ID} .ruta-status-ok{color:#218739;font-weight:700}
       #${ID} .ruta-status-actions{display:flex;gap:8px;margin-top:16px}
       #${ID} button{padding:9px 13px;border:0;border-radius:10px;font:inherit;cursor:pointer}
-      .ruta-system-status-trigger{margin-left:8px;padding:10px 14px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font:inherit;font-weight:650;cursor:pointer;white-space:nowrap}
+      .ruta-system-status-trigger{margin-left:8px;width:96px;height:48px;padding:0 12px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font:inherit;font-size:17px;font-weight:650;cursor:pointer;white-space:nowrap}
       .ruta-system-status-trigger:active{opacity:.7}
     `;
     document.head.appendChild(style);
