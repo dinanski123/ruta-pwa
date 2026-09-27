@@ -121,7 +121,7 @@ async function getTraffic24h() {
 }
 
 async function findProjectId(token) {
-  const teamId = process.env.VERCEL_TEAM_ID;
+  const teamId = process.env.VERCEL_TEAM_ID || "team_UQBGgOv8y56MG4RhkoyDF2oo";
   const params = new URLSearchParams(teamId ? { teamId } : {});
   const response = await fetch(
     `https://api.vercel.com/v9/projects/ruta-pwa?${params}`,
