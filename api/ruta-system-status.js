@@ -79,7 +79,7 @@ async function getTraffic24h() {
       };
     }
 
-    const teamId = process.env.VERCEL_TEAM_ID;
+    const teamId = process.env.VERCEL_TEAM_ID || "team_UQBGgOv8y56MG4RhkoyDF2oo";
     const params = new URLSearchParams({
       projectId,
       ...(teamId ? { teamId } : {})
