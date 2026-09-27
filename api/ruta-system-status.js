@@ -80,36 +80,72 @@ async function getTraffic24h() {
     }
 
     const teamId = process.env.VERCEL_TEAM_ID || "team_UQBGgOv8y56MG4RhkoyDF2oo";
-    const params = new URLSearchParams({
+    const until = new Date();
+    const since = new Date(until.getTime() - 24 * 60 * 60 * 1000);
+    const base = {
       projectId,
-      ...(teamId ? { teamId } : {})
+      teamId,
+      since: since.toISOString(),
+      until: until.toISOString()
+    };
+
+    const countParams = new URLSearchParams(base);
+    const pathParams = new URLSearchParams({
+      ...base,
+      by: "requestPath",
+      limit: "10"
     });
 
-    const response = await fetch(
-      `https://api.vercel.com/v1/query/web-analytics/visits/count?${params}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        cache: "no-store"
-      }
-    );
+    const headers = {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    };
 
-    if (!response.ok) {
+    const [countResponse, pathResponse] = await Promise.all([
+      fetch(`https://api.vercel.com/v1/query/web-analytics/visits/count?${countParams}`, {
+        headers,
+        cache: "no-store"
+      }),
+      fetch(`https://api.vercel.com/v1/query/web-analytics/visits/aggregate?${pathParams}`, {
+        headers,
+        cache: "no-store"
+      })
+    ]);
+
+    if (!countResponse.ok || !pathResponse.ok) {
+      const failed = !countResponse.ok ? countResponse : pathResponse;
       return {
         available: false,
         source: "Vercel Web Analytics",
-        reason: `Vercel API returned ${response.status}.`
+        reason: `Vercel API returned ${failed.status}.`
       };
     }
 
-    const data = await response.json();
+    const [countData, pathData] = await Promise.all([
+      countResponse.json(),
+      pathResponse.json()
+    ]);
+
+    const count = countData?.data?.count ??
+      countData?.data?.pageviews ??
+      countData?.count ??
+      countData?.total ??
+      null;
+
+    const topPaths = Array.isArray(pathData?.data)
+      ? pathData.data.map(item => ({
+          path: item.requestPath || item.route || "unknown",
+          page_views: item.pageviews ?? item.count ?? 0,
+          visitors: item.visitors ?? null
+        }))
+      : [];
+
     return {
       available: true,
       source: "Vercel Web Analytics",
-      page_views: typeof data === "number" ? data : data?.count ?? data?.total ?? null,
-      note: "Page views are not the same as Vercel Edge Requests."
+      page_views_24h: count,
+      top_paths_24h: topPaths,
+      note: "These are Web Analytics page views, not total Vercel Edge Requests."
     };
   } catch (error) {
     return {
