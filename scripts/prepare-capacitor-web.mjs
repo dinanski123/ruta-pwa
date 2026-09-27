@@ -20,10 +20,18 @@ async function unpack(name) {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 const index = (await unpack('index.html')).toString('utf8');
-await writeFile(resolve(out, 'index.html'), index.replace('</body>', '<script src="/system-status.js?v=4" defer></script></body>'));
+const vercelAnalytics = `
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+`;
+const systemStatus = '<script src="/system-status.js?v=4" defer></script>';
+const injectedIndex = index.replace('</body>', `${vercelAnalytics}${systemStatus}</body>`);
+await writeFile(resolve(out, 'index.html'), injectedIndex);
 await writeFile(resolve(out, 'cloud-sync.js'), await unpack('cloud-sync.js'));
 for (const file of ['manifest.json', 'service-worker.js', 'system-status.js']) {
   await cp(resolve(root, file), resolve(out, file));
 }
 await cp(resolve(root, 'icons'), resolve(out, 'icons'), { recursive: true });
-console.log('Prepared RUTA v1.4.0 static web assets in www/');
+console.log('Prepared RUTA v1.4.0 static web assets with Vercel Web Analytics.');
