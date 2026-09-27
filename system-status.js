@@ -63,11 +63,35 @@
 
       const traffic = data.traffic || {};
       panel.querySelector("[data-ruta-views]").textContent =
-        traffic.available ? formatNumber(traffic.page_views) : "Not connected";
+        traffic.available ? formatNumber(traffic.page_views_24h) : "Not connected";
       panel.querySelector("[data-ruta-traffic-note]").textContent =
         traffic.available
           ? traffic.note || "Vercel Web Analytics"
           : traffic.reason || "Vercel traffic data unavailable.";
+
+      const paths = panel.querySelector("[data-ruta-top-paths]");
+      if (paths) {
+        paths.innerHTML = "";
+        if (traffic.available && Array.isArray(traffic.top_paths_24h) && traffic.top_paths_24h.length) {
+          traffic.top_paths_24h.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "ruta-status-row";
+            const label = document.createElement("span");
+            label.textContent = item.path;
+            const count = document.createElement("span");
+            count.textContent = formatNumber(item.page_views);
+            row.append(label, count);
+            paths.appendChild(row);
+          });
+        } else {
+          const row = document.createElement("div");
+          row.className = "ruta-status-note";
+          row.textContent = traffic.available
+            ? "No route data returned."
+            : (traffic.reason || "Traffic data unavailable.");
+          paths.appendChild(row);
+        }
+      }
 
       panel.querySelector("[data-ruta-refresh-time]").textContent =
         data.checked_at ? new Date(data.checked_at).toLocaleTimeString() : "—";
@@ -110,7 +134,7 @@
           <div class="ruta-status-section">
             <div class="ruta-status-section-title">Traffic</div>
             <div class="ruta-status-row"><span>Page views</span><span data-ruta-views>Checking…</span></div>
-            <div class="ruta-status-note" data-ruta-traffic-note>Loading Vercel traffic data…</div>\n            <div class="ruta-status-section-title" style="margin-top:12px">Top paths · 24H</div>\n            <div data-ruta-top-paths><div class="ruta-status-note">Loading…</div></div>
+            <div class="ruta-status-note" data-ruta-traffic-note>Loading Vercel traffic data…</div>\n            <div class="ruta-status-section-title" style="margin-top:12px">Top paths · 24H</div>\n            <div data-ruta-top-paths><div class="ruta-status-note">Loading…</div></div>\n            <div class="ruta-status-section-title" style="margin-top:12px">Top paths · 24H</div>\n            <div data-ruta-top-paths><div class="ruta-status-note">Loading…</div></div>
             <div class="ruta-status-note">Vercel Edge Requests are a separate metric and are not represented by Web Analytics page views.</div>
           </div>
 
