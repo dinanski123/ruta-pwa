@@ -109,7 +109,7 @@
 
           <div class="ruta-status-section">
             <div class="ruta-status-section-title">Traffic</div>
-            <div class="ruta-status-row"><span>Page views · 24H</span><span data-ruta-views>Checking…</span></div>
+            <div class="ruta-status-row"><span>Page views</span><span data-ruta-views>Checking…</span></div>
             <div class="ruta-status-note" data-ruta-traffic-note>Loading Vercel traffic data…</div>
             <div class="ruta-status-note">Vercel Edge Requests are a separate metric and are not represented by Web Analytics page views.</div>
           </div>
