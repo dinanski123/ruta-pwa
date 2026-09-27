@@ -93,7 +93,7 @@ async function getTraffic24h() {
     const pathParams = new URLSearchParams({
       ...base,
       by: "requestPath",
-      limit: "10"
+      limit: "100"
     });
 
     const headers = {
@@ -140,10 +140,21 @@ async function getTraffic24h() {
         }))
       : [];
 
+    // Vercel's aggregate endpoint is returning the actual page-view rows for
+    // RUTA even when the count response reports zero. Use those page views as
+    // the total in that case so the status panel does not show 0 while paths
+    // clearly contain traffic.
+    const aggregatePageViews = topPaths.reduce(
+      (sum, item) => sum + (Number(item.page_views) || 0),
+      0
+    );
+    const pageViews24h =
+      Number(count) > 0 ? Number(count) : aggregatePageViews;
+
     return {
       available: true,
       source: "Vercel Web Analytics",
-      page_views_24h: count,
+      page_views_24h: pageViews24h,
       top_paths_24h: topPaths,
       note: "These are Web Analytics page views, not total Vercel Edge Requests."
     };
