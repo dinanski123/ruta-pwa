@@ -21,7 +21,7 @@
       #${ID} .ruta-status-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
       #${ID} button{padding:9px 13px;border:0;border-radius:10px;font:inherit;cursor:pointer}
       #${ID} .ruta-status-link{display:inline-flex;align-items:center;padding:9px 13px;border:1px solid color-mix(in srgb, CanvasText 16%, transparent);border-radius:10px;text-decoration:none;color:inherit}
-      #${ID} .ruta-status-note{font-size:.76em;opacity:.58;line-height:1.4;margin-top:7px}
+      #${ID} [data-ruta-top-paths]{margin-top:4px}\n      #${ID} .ruta-status-note{font-size:.76em;opacity:.58;line-height:1.4;margin-top:7px}
       .ruta-system-status-trigger{margin-left:8px;width:64px;height:32px;padding:0 6px;border:1px solid #c9c9c2;border-radius:8px;background:#fff;color:#202422;font:inherit;font-size:13px;line-height:1;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;box-shadow:0 1px 2px rgba(0,0,0,.04)}
       .ruta-system-status-trigger:active{opacity:.7}
     `;
@@ -110,7 +110,7 @@
           <div class="ruta-status-section">
             <div class="ruta-status-section-title">Traffic</div>
             <div class="ruta-status-row"><span>Page views</span><span data-ruta-views>Checking…</span></div>
-            <div class="ruta-status-note" data-ruta-traffic-note>Loading Vercel traffic data…</div>
+            <div class="ruta-status-note" data-ruta-traffic-note>Loading Vercel traffic data…</div>\n            <div class="ruta-status-section-title" style="margin-top:12px">Top paths · 24H</div>\n            <div data-ruta-top-paths><div class="ruta-status-note">Loading…</div></div>
             <div class="ruta-status-note">Vercel Edge Requests are a separate metric and are not represented by Web Analytics page views.</div>
           </div>
 
