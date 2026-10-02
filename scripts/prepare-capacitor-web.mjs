@@ -51,8 +51,8 @@ const safeAreaStyle = `
 
 const viewportMeta = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">';
 const systemStatus = '<script src="/system-status.js?v=4" defer></script>';
-const withViewport = /<meta\\s+name=["']viewport["'][^>]*>/i.test(index)
-  ? index.replace(/<meta\\s+name=["']viewport["'][^>]*>/i, viewportMeta)
+const withViewport = /<meta\s+name=["']viewport["'][^>]*>/i.test(index)
+  ? index.replace(/<meta\s+name=["']viewport["'][^>]*>/i, viewportMeta)
   : index.replace('</head>', `${viewportMeta}</head>`);
 const injectedIndex = withViewport.replace('</head>', `${safeAreaStyle}</head>`).replace('</body>', `${vercelAnalytics}${systemStatus}</body>`);
 await writeFile(resolve(out, 'index.html'), injectedIndex);
