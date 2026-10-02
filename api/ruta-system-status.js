@@ -1,4 +1,16 @@
 export default async function handler(req, res) {
+  const requestOrigin = req?.headers?.origin || "";
+  const allowedOrigins = new Set([
+    "https://ruta-ferdz.vercel.app",
+    "https://localhost",
+    "http://localhost",
+    "capacitor://localhost"
+  ]);
+  if (allowedOrigins.has(requestOrigin)) {
+    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+    res.setHeader("Vary", "Origin");
+  }
+
   const checkedAt = new Date().toISOString();
   const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ||
     "sb_publishable_fVzhqEUloMaYijWLniImmQ_rtSXnyDr";
