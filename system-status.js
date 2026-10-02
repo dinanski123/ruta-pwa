@@ -42,7 +42,12 @@
     status.className = "";
 
     try {
-      const r = await fetch("/api/ruta-system-status", { cache: "no-store" });
+      const apiOrigin =
+        window.location.protocol === "capacitor:" ||
+        window.location.hostname === "localhost"
+          ? "https://ruta-ferdz.vercel.app"
+          : window.location.origin;
+      const r = await fetch(`${apiOrigin}/api/ruta-system-status`, { cache: "no-store" });
       const data = await r.json();
 
       status.textContent = data.ok ? "Healthy" : "Unavailable";
